@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Administrador por Voz</title>
+<style>
+:root{
+  --bg:#f4f1ea; --card:#fffdf8; --ink:#1f2a24; --mute:#6b736d; --line:#e3ddd0;
+  --verde:#1f7a4d; --verde-s:#e3f2e9; --rojo:#b3402e; --rojo-s:#f8e6e2; --azul:#2a5d8f; --azul-s:#e4edf6;
+  --acento:#1f2a24;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:1.4}
+header{padding:18px 16px 8px;max-width:760px;margin:0 auto}
+header h1{margin:0;font-size:22px;letter-spacing:-.3px}
+header .sub{color:var(--mute);font-size:14px;margin-top:2px}
+#estado{font-size:12px;color:var(--mute);margin-top:6px}
+main{max-width:760px;margin:0 auto;padding:0 12px 110px}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:5}
+nav button{flex:1;max-width:150px;background:none;border:0;padding:10px 4px 12px;font-size:12px;color:var(--mute);cursor:pointer}
+nav button b{display:block;font-size:20px;line-height:1.2}
+nav button.on{color:var(--ink);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+.hablar{display:flex;gap:8px;align-items:stretch}
+#frase{flex:1;font-size:18px;padding:14px;border-radius:12px;border:2px solid var(--line);background:#fff;min-height:56px;resize:none;font-family:inherit}
+#frase:focus{outline:none;border-color:var(--ink)}
+.btn{border:0;border-radius:12px;padding:12px 16px;font-size:16px;font-weight:600;cursor:pointer;background:var(--ink);color:#fff}
+.btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.peligro{background:var(--rojo)}
+.btn.verde{background:var(--verde)}
+#mic{width:60px;font-size:24px;padding:0}
+#mic.oyendo{background:var(--rojo);animation:lat 1s infinite}
+@keyframes lat{50%{opacity:.6}}
+.tip{font-size:14px;color:var(--mute);margin-top:8px}
+.ejemplos{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.ejemplos button{background:#fff;border:1px dashed var(--line);border-radius:20px;padding:6px 10px;font-size:13px;color:var(--mute);cursor:pointer}
+.confirma{border:2px solid var(--ink)}
+.confirma h3{margin:0 0 10px;font-size:16px}
+.campos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.campos label{font-size:12px;color:var(--mute);display:block}
+.campos input,.campos select{width:100%;font-size:16px;padding:9px;border-radius:9px;border:1px solid var(--line);background:#fff;font-family:inherit}
+.campos .ancho{grid-column:1/-1}
+.fila-btn{display:flex;gap:8px;margin-top:12px}
+.fila-btn .btn{flex:1}
+.respuesta{background:var(--azul-s);border-color:#c9d9ea}
+.respuesta .quien{font-size:12px;color:var(--azul);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.respuesta p{margin:6px 0 0;white-space:pre-line}
+.cuentas{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.cuentas .card{margin:0}
+.cuenta h4{margin:0 0 8px;font-size:16px}
+.linea{display:flex;justify-content:space-between;font-size:15px;padding:2px 0}
+.linea.total{border-top:1px solid var(--line);margin-top:6px;padding-top:6px;font-weight:700}
+.pos{color:var(--verde)} .neg{color:var(--rojo)}
+.mov{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.mov:last-child{border-bottom:0}
+.mov .ic{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+.ic.entrada{background:var(--verde-s);color:var(--verde)} .ic.salida{background:var(--rojo-s);color:var(--rojo)} .ic.nota{background:var(--azul-s);color:var(--azul)}
+.mov .tx{flex:1;min-width:0}
+.mov .t1{font-weight:600}
+.mov .t2{font-size:13px;color:var(--mute)}
+.mov .monto{font-weight:700;white-space:nowrap}
+.mov .x{background:none;border:0;color:var(--mute);font-size:18px;cursor:pointer;padding:0 4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:20px;padding:6px 12px;font-size:14px;cursor:pointer}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.buscar{width:100%;font-size:16px;padding:10px;border-radius:10px;border:1px solid var(--line);margin-bottom:8px}
+h2{font-size:18px;margin:18px 4px 4px}
+.vacio{color:var(--mute);text-align:center;padding:20px 8px}
+.barras{display:flex;align-items:flex-end;gap:10px;height:170px;padding:8px 4px 0;border-bottom:1px solid var(--line)}
+.mes{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end}
+.par{display:flex;gap:3px;align-items:flex-end;height:100%;width:100%;justify-content:center}
+.bar{width:40%;max-width:22px;border-radius:4px 4px 0 0;min-height:2px}
+.bar.e{background:var(--verde)} .bar.s{background:var(--rojo)}
+.etq{display:flex;gap:10px;padding:4px 4px 0}
+.etq div{flex:1;text-align:center;font-size:12px;color:var(--mute)}
+.leyenda{display:flex;gap:14px;font-size:13px;color:var(--mute);margin-top:8px}
+.leyenda i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:right}
+td:first-child,th:first-child{text-align:left}
+th{font-size:12px;color:var(--mute);font-weight:600}
+.persona{cursor:pointer}
+textarea.json{width:100%;min-height:90px;font-family:monospace;font-size:12px;border-radius:10px;border:1px solid var(--line);padding:8px}
+.aviso{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-size:15px;z-index:9;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%}
+.aviso.ver{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
+.modal.ver{display:flex}
+.modal .card{max-width:420px;width:100%}
+.oculto{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎙️ Mi Administrador por Voz</h1>
+  <div class="sub">Hable y la app anota. Pregunte y la app recuerda.</div>
+  <div id="estado">Cargando…</div>
+</header>
+
+<main>
+  <!-- ============ INICIO ============ -->
+  <section id="v-inicio">
+    <div class="card">
+      <div class="hablar">
+        <textarea id="frase" rows="2" placeholder="Toque aquí y hable… ej: «me gasté 10.000 del negocio Top Star»"></textarea>
+        <button class="btn" id="mic" title="Hablar">🎤</button>
+      </div>
+      <div class="fila-btn"><button class="btn" id="enviar">Listo ✓</button></div>
+      <div class="tip" id="tipMic">💡 Si el botón 🎤 no funciona aquí, toque la cajita y use el <b>micrófono del teclado</b> de su celular: habla y se escribe solo.</div>
+      <div class="ejemplos" id="ejemplos"></div>
+    </div>
+    <div id="zonaConfirma"></div>
+    <div id="zonaRespuesta"></div>
+
+    <h2>Este mes</h2>
+    <div class="cuentas" id="resumenCuentas"></div>
+
+    <h2>Últimos movimientos</h2>
+    <div class="card" id="ultimos"></div>
+  </section>
+
+  <!-- ============ MOVIMIENTOS ============ -->
+  <section id="v-movs" class="oculto">
+    <h2>Todos los movimientos</h2>
+    <input class="buscar" id="buscar" placeholder="Buscar: Leo, pan, arriendo…">
+    <div class="chips" id="filtroCuenta"></div>
+    <div class="chips" id="filtroTipo"></div>
+    <div class="card" id="listaMovs"></div>
+  </section>
+
+  <!-- ============ ESTADISTICAS ============ -->
+  <section id="v-stats" class="oculto">
+    <h2>Ganancias y pérdidas</h2>
+    <div class="chips" id="statsCuenta"></div>
+    <div class="card">
+      <div class="barras" id="barras"></div>
+      <div class="etq" id="etqBarras"></div>
+      <div class="leyenda"><span><i style="background:var(--verde)"></i>Entradas</span><span><i style="background:var(--rojo)"></i>Salidas</span></div>
+    </div>
+    <div class="card"><table id="tablaMeses"></table></div>
+    <h2>¿En qué se va más la plata? (este mes)</h2>
+    <div class="card" id="topGastos"></div>
+  </section>
+
+  <!-- ============ PERSONAS / RECUERDOS ============ -->
+  <section id="v-personas" class="oculto">
+    <h2>Personas</h2>
+    <div class="tip" style="margin:0 4px">Todo el dinero que usted da o recibe de alguien queda aquí. Toque un nombre para ver el detalle.</div>
+    <div class="card" id="listaPersonas"></div>
+    <div id="detallePersona"></div>
+    <h2>Notas y recuerdos</h2>
+    <div class="card" id="listaNotas"></div>
+  </section>
+
+  <!-- ============ AJUSTES ============ -->
+  <section id="v-ajustes" class="oculto">
+    <h2>Mis casillas (negocios)</h2>
+    <div class="card">
+      <div id="listaCuentas"></div>
+      <div class="campos" style="margin-top:10px">
+        <div><label>Nombre nuevo</label><input id="nuevaCuenta" placeholder="Ej: Panadería"></div>
+        <div><label>Otras formas de decirlo</label><input id="nuevaAlias" placeholder="Ej: pana, la panadería"></div>
+      </div>
+      <div class="fila-btn"><button class="btn" id="agregarCuenta">Agregar casilla</button></div>
+    </div>
+
+    <h2>Voz</h2>
+    <div class="card">
+      <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="optVoz"> Que la app me lea las respuestas en voz alta</label>
+    </div>
+
+    <h2>Copia de seguridad</h2>
+    <div class="card">
+      <div class="tip" style="margin-top:0">Copie todo el texto y guárdelo en WhatsApp (chat con usted mismo) o en un correo. Así nunca pierde nada.</div>
+      <div class="fila-btn"><button class="btn sec" id="copiarRespaldo">📋 Copiar respaldo</button></div>
+      <textarea class="json" id="respaldoTxt" placeholder="Para restaurar: pegue aquí el respaldo y toque Restaurar"></textarea>
+      <div class="fila-btn"><button class="btn sec" id="restaurar">Restaurar respaldo</button></div>
+    </div>
+
+    <h2>Empezar de cero</h2>
+    <div class="card">
+      <div class="tip" style="margin-top:0">Borra todos los movimientos de este usuario. Útil si le va a pasar la app a otra persona en este mismo celular.</div>
+      <div class="fila-btn"><button class="btn peligro" id="borrarTodo">Borrar todo</button></div>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button data-v="inicio" class="on"><b>🏠</b>Inicio</button>
+  <button data-v="movs"><b>📒</b>Movimientos</button>
+  <button data-v="stats"><b>📊</b>Estadísticas</button>
+  <button data-v="personas"><b>👥</b>Personas</button>
+  <button data-v="ajustes"><b>⚙️</b>Ajustes</button>
+</nav>
+
+<div class="aviso" id="aviso"></div>
+<div class="modal" id="modal"><div class="card"><p id="modalTxt" style="margin-top:0"></p><div class="fila-btn"><button class="btn sec" id="modalNo">Cancelar</button><button class="btn peligro" id="modalSi">Sí</button></div></div></div>
+
+<script>
+/* =====================================================================
+   1) INTÉRPRETE DE FRASES — convierte lo que usted dice en un movimiento
+   ===================================================================== */
+const CUENTAS_INICIALES = [
+  {nombre:'Top Star', alias:['top star','topstar','top start','top estar','tops star','top esta','topstart']},
+  {nombre:'Licorería', alias:['licoreria','licorera','licor','la licore']},
+  {nombre:'Personal', alias:['personal','personales','mis gastos','para mi','mi casa','la casa']}
+];
+
+// Quita tildes y pasa a minúsculas SIN cambiar el largo del texto
+function norm(s){
+  const m={'á':'a','à':'a','ä':'a','é':'e','è':'e','ë':'e','í':'i','ì':'i','ï':'i','ó':'o','ò':'o','ö':'o','ú':'u','ù':'u','ü':'u','ñ':'n','¿':' ','¡':' '};
+  let out='';
+  for(const ch of String(s)){ const l=ch.toLowerCase(); out += (m[l]!==undefined?m[l]:(l.length===1?l:ch)); }
+  return out;
+}
+
+const NUM = {cero:0,un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,dieciseis:16,diecisiete:17,dieciocho:18,diecinueve:19,veinte:20,veintiun:21,veintiuno:21,veintidos:22,veintitres:23,veinticuatro:24,veinticinco:25,veintiseis:26,veintisiete:27,veintiocho:28,veintinueve:29,treinta:30,cuarenta:40,cincuenta:50,sesenta:60,setenta:70,ochenta:80,noventa:90,cien:100,ciento:100,doscientos:200,doscientas:200,trescientos:300,trescientas:300,cuatrocientos:400,quinientos:500,quinientas:500,seiscientos:600,setecientos:700,ochocientos:800,novecientos:900};
+const MULT = {mil:1e3,luca:1e3,lucas:1e3,k:1e3,millon:1e6,millones:1e6,palo:1e6,palos:1e6};
+
+// Busca la cantidad de dinero. Devuelve {monto, ini, fin}
+function buscarMonto(n){
+  let mejor=null;
+  // a) con números: 10.000 / 10000 / 50 mil / 1,5 millones
+  const re=/\$?\s*(\d+(?:[.,]\d+)*)(\s*(?:mil|lucas?|k|millones|millon|palos?)\b)?(\s*(?:pesos?|bs|bolivares|dolares))?/g;
+  let r;
+  while((r=re.exec(n))){
+    let t=r[1], v;
+    if(/^\d{1,3}([.,]\d{3})+$/.test(t)) v=parseInt(t.replace(/[.,]/g,''),10);
+    else v=parseFloat(t.replace(',','.'));
+    if(r[2]) v*=MULT[r[2].trim()];
+    if(!mejor||v>mejor.monto) mejor={monto:Math.round(v),ini:r.index,fin:r.index+r[0].length};
+  }
+  if(mejor) return mejor;
+  // b) en palabras: "cincuenta mil", "veinte mil quinientos"
+  const tokens=[]; const rt=/[a-z]+/g; let w;
+  while((w=rt.exec(n))) tokens.push({t:w[0],i:w.index,f:w.index+w[0].length});
+  for(let k=0;k<tokens.length;k++){
+    const t0=tokens[k].t;
+    if(!(t0 in NUM)&&!(t0 in MULT && t0!=='k')) continue;
+    if((t0==='un'||t0==='una'||t0==='uno')){ const nx=tokens[k+1]&&tokens[k+1].t; if(!(nx in MULT)) continue; }
+    let total=0,cur=0,j=k,usado=false;
+    for(;j<tokens.length;j++){
+      const t=tokens[j].t;
+      if(t in NUM){cur+=NUM[t];usado=true;}
+      else if(t==='y'&&usado&&tokens[j+1]&&(tokens[j+1].t in NUM)) continue;
+      else if(t==='mil'||t==='lucas'||t==='luca'){cur=(cur||1)*1000;total+=cur;cur=0;usado=true;}
+      else if(t==='millon'||t==='millones'||t==='palos'||t==='palo'){total=(total+(cur||1))*1e6;cur=0;usado=true;}
+      else if(t==='medio'&&usado){ total+= (total>=1e6?5e5:500); }
+      else if(t==='pesos'||t==='peso'){j++;break;}
+      else break;
+    }
+    const v=total+cur;
+    if(usado&&v>0){
+      const cand={monto:v,ini:tokens[k].i,fin:tokens[j-1].f};
+      if(!mejor||v>mejor.monto) mejor=cand;
+      k=j;
+    }
+  }
+  return mejor;
+}
+
+const STOP = new Set(('la el los las lo le les mi mis tu su sus un una unos unas uno al del de que y o casa negocio negocios compra compras comprar '+
+ 'pagar pago pagos gasto gastos personal personales casilla entrada entradas salida salidas pesos peso plata dinero efectivo mercado comida '+
+ 'pan pasteles luz agua gas internet arriendo renta alquiler credito deuda hoy ayer manana semana mes ano ellos ella el ellas usted '+
+ 'mil cuenta caja banco tienda local pedido pedidos factura todo todos nada eso esto esa ese este esta ver vender pasaje transporte taxi '+
+ 'gasolina medicina remedios almuerzo desayuno cena comprarle cobrar trabajo nomina sueldo cliente clientes proveedor mercancia '+
+ 'cerveza cervezas licor ron fiado inventario pedir hacer ir traer llevar').split(' '));
+
+function esCuentaPalabra(w,cuentas){ return cuentas.some(c=>c.alias.concat([norm(c.nombre)]).some(a=>a.split(' ').includes(w))); }
+
+function capitalizar(s){ return s?s.charAt(0).toUpperCase()+s.slice(1):s; }
+
+// ¿la palabra aparece con mayúscula en el texto original?
+function conMayuscula(orig, n, w){
+  const re=new RegExp('\\b'+w+'\\b','g'); let r;
+  while((r=re.exec(n))){ const c=orig.charAt(r.index); if(c && c===c.toUpperCase() && c!==c.toLowerCase()) return true; }
+  return false;
+}
+
+function buscarPersona(orig,n,cuentas,conocidas){
+  // 1) personas que ya conoce la app
+  for(const p of conocidas){ const pn=norm(p); if(new RegExp('\\b'+pn+'\\b').test(n)) return {nombre:p, re:new RegExp('\\b(?:a|de|para|con)?\\s*(?:mi\\s+)?'+pn+'\\b')}; }
+  const valida=(w)=>{
+    if(!w||w.length<2||STOP.has(w)||(w in NUM)||(w in MULT)||esCuentaPalabra(w,cuentas)) return false;
+    if(/(ar|er|ir)$/.test(w)&&w.length>=5&&!conMayuscula(orig,n,w)) return false; // parece verbo
+    return true;
+  };
+  const pats=[
+    /\b([a-z]+)\s+me\s+(?:pago|dio|trajo|presto|devolvio|mando|envio|dejo|regalo)\b/,
+    /\bme\s+(?:pago|dio|trajo|presto|devolvio|mando|envio|dejo|regalo)\s+(?:el\s+|la\s+|mi\s+)?([a-z]+)\b/,
+    /\b(?:a|al)\s+(?:mi\s+|el\s+|la\s+|don\s+|dona\s+|senor\s+|senora\s+)?([a-z]+)\b/g,
+    /\b(?:para|con)\s+(?:mi\s+|el\s+|la\s+|don\s+|dona\s+)?([a-z]+)\b/g,
+    /\bde\s+(?:mi\s+|el\s+|la\s+|don\s+|dona\s+)?([a-z]+)\b/g
+  ];
+  for(const p of pats){
+    if(p.global){ p.lastIndex=0; let r; while((r=p.exec(n))){ if(valida(r[1])) return {nombre:capitalizar(r[1]), re:new RegExp('\\b(?:a|al|de|para|con)\\s+(?:mi\\s+|el\\s+|la\\s+|don\\s+|dona\\s+)?'+r[1]+'\\b')}; } }
+    else { const r=n.match(p); if(r&&valida(r[1])) return {nombre:capitalizar(r[1]), re:new RegExp('\\b'+r[1]+'\\b')}; }
+  }
+  return null;
+}
+
+const V_ENTRADA = /\b(gane|ganamos|ganaron|gano|entro|entraron|entrada|ingreso|ingresaron|vendi|vendimos|vendieron|venta|ventas|recibi|recibimos|cobre|cobramos|me\s+(?:pagaron|pago|dieron|dio|trajo|trajeron|devolvio|devolvieron|presto|prestaron|mandaron|mando|envio|enviaron|regalo|dejo))\b/;
+const V_SALIDA  = /\b(gaste|gastamos|gasto|gastaron|pague|pagamos|compre|compramos|salio|salieron|salida|invert[ií]|saque|sacamos|perdi|perdimos|(?:le|les)?\s*(?:di|dimos|preste|prestamos|entregue|mande|envie|deje|regale|pase))\b/;
+
+function detectarTipo(n){
+  const e=n.search(V_ENTRADA), s=n.search(V_SALIDA);
+  if(e<0&&s<0) return null;
+  if(e<0) return 'salida'; if(s<0) return 'entrada';
+  return e<s?'entrada':'salida';
+}
+
+function buscarCuenta(n,cuentas){
+  for(const c of cuentas){
+    if(c.nombre==='Personal') continue;
+    for(const a of c.alias.concat([norm(c.nombre)]).sort((x,y)=>y.length-x.length)){ const i=n.indexOf(a); if(i>=0) return {cuenta:c.nombre,ini:i,fin:i+a.length}; }
+  }
+  const p=cuentas.find(c=>c.nombre==='Personal');
+  if(p) for(const a of p.alias.concat(['personal'])){ const i=n.indexOf(a); if(i>=0) return {cuenta:'Personal',ini:i,fin:i+a.length,explicita:true}; }
+  return null;
+}
+
+function detectarFecha(n,base){
+  const d=new Date(base||Date.now());
+  if(/\bantier|anteayer|antes de ayer\b/.test(n)) d.setDate(d.getDate()-2);
+  else if(/\bayer\b/.test(n)) d.setDate(d.getDate()-1);
+  return d.toISOString();
+}
+
+const PREGUNTA = /^\s*(que|cuanto|cuanta|cuantos|cuantas|cuando|quien|quienes|a quien|cual|cuales|como|dime|digame|muestrame|mostrar|recuerdame que le|recuerdame cuanto|en que|balance|resumen)\b/;
+const NOTA = /^\s*(anota|anote|apunta|apunte|recuerda|recuerde|recuerdame|acuerdate|nota|guarda|guarde)\b/;
+
+// Función principal: frase -> objeto
+function interpretar(texto,cuentas,conocidas,ahora){
+  cuentas=cuentas||CUENTAS_INICIALES; conocidas=conocidas||[];
+  const orig=String(texto).trim(); const n=norm(orig);
+  if(!n.trim()) return null;
+  if(PREGUNTA.test(n) || /\?\s*$/.test(orig)) return {pregunta:true, texto:orig};
+  const monto=buscarMonto(n);
+  const cta=buscarCuenta(n,cuentas);
+  const per=buscarPersona(orig,n,cuentas,conocidas);
+  let tipo = monto ? (detectarTipo(n)||'salida') : 'nota';
+  if(NOTA.test(n) && !detectarTipo(n)) tipo='nota';
+  // Concepto: el texto sin verbos, montos, casillas ni nombre
+  const quitar=new Array(orig.length).fill(false);
+  const marcar=(i,f)=>{for(let k=i;k<f;k++)quitar[k]=true;};
+  if(monto) marcar(monto.ini,monto.fin);
+  if(cta){
+    // quita también "del negocio", "de la", "en la casilla de", etc. antes del nombre
+    const antes=n.slice(0,cta.ini).match(/((?:del?|en|para|a)\s+)?(?:la\s+casilla\s+de\s+)?(?:gastos\s+de\s+|entradas\s+de\s+)?(?:el\s+|la\s+|mi\s+)?(?:negocio\s+(?:de\s+)?(?:la\s+)?)?(?:la\s+|el\s+)?$/);
+    marcar(cta.ini-(antes?antes[0].length:0),cta.fin);
+  }
+  if(per){ const r=n.match(per.re); if(r) marcar(r.index,r.index+r[0].length); }
+  let resto=''; for(let k=0;k<orig.length;k++) resto+=quitar[k]?' ':orig[k];
+  let rn=norm(resto);
+  const LIMPIAR=[V_ENTRADA,V_SALIDA,/\b(anota|anote|apunta|apunte|recuerda|recuerde|recuerdame|acuerdate|guarda|guarde)\s*(que)?\b/,/\b(hoy|ayer|antier|anteayer|antes de ayer)\b/,/\b(me|yo|nos|le|les|pesos?|y|pase|pasa|lo|a la casilla|casilla|del negocio|negocio)\b/g];
+  for(const L of LIMPIAR){
+    const g=new RegExp(L.source,'g'); let r;
+    while((r=g.exec(rn))){ for(let k=r.index;k<r.index+r[0].length;k++) quitar[k]=true; if(!r[0].length) g.lastIndex++; }
+    resto=''; for(let k=0;k<orig.length;k++) resto+=quitar[k]?' ':orig[k]; rn=norm(resto);
+  }
+  let concepto=resto.replace(/\s+/g,' ').trim().replace(/^[,.;:\s]+|[,.;:\s]+$/g,'');
+  for(let i=0;i<4;i++) concepto=concepto.replace(/^(para|en|de|del|el|la|los|las|con|por|que|un|una|al|a)\s+/i,'').replace(/\s+(de|del|en|para|y|el|la|a)$/i,'');
+  if(tipo==='nota') concepto=orig.replace(NOTA,'').replace(/^\s*(que)\s+/i,'').trim()||orig;
+  concepto=capitalizar(concepto);
+  return {
+    pregunta:false, tipo,
+    monto: monto?monto.monto:0,
+    cuenta: cta?cta.cuenta:'Personal',
+    persona: per?per.nombre:'',
+    concepto: concepto || (tipo==='entrada'?'Entrada':tipo==='salida'?'Gasto':'Nota'),
+    fecha: detectarFecha(n,ahora),
+    texto: orig
+  };
+}
+
+/* =====================================================================
+   2) RESPONDER PREGUNTAS — "¿qué le di a Leo?", "¿cuánto gasté este mes?"
+   ===================================================================== */
+function rangoPeriodo(n,ahora){
+  const d=new Date(ahora||Date.now()); const y=d.getFullYear(), m=d.getMonth();
+  const dia=(a)=>{const x=new Date(a);x.setHours(0,0,0,0);return x;};
+  if(/\bhoy\b/.test(n)) return {ini:dia(d),fin:null,nombre:'hoy'};
+  if(/\bayer\b/.test(n)){const a=dia(d);a.setDate(a.getDate()-1);const f=dia(d);return {ini:a,fin:f,nombre:'ayer'};}
+  if(/\b(esta semana|la semana)\b/.test(n)){const a=dia(d);a.setDate(a.getDate()-((a.getDay()+6)%7));return {ini:a,fin:null,nombre:'esta semana'};}
+  if(/\b(mes pasado|el otro mes)\b/.test(n)) return {ini:new Date(y,m-1,1),fin:new Date(y,m,1),nombre:'el mes pasado'};
+  if(/\b(este mes|el mes|del mes|en el mes|mensual)\b/.test(n)) return {ini:new Date(y,m,1),fin:null,nombre:'este mes'};
+  if(/\b(este ano|el ano|del ano)\b/.test(n)) return {ini:new Date(y,0,1),fin:null,nombre:'este año'};
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  for(let i=0;i<12;i++) if(new RegExp('\\b'+meses[i]+'\\b').test(n)){ const yy=i>m?y-1:y; return {ini:new Date(yy,i,1),fin:new Date(yy,i+1,1),nombre:'en '+meses[i]}; }
+  return null;
+}
+
+function responder(texto,movs,cuentas,ahora){
+  const orig=texto, n=norm(texto);
+  const conocidas=personasDe(movs);
+  const per=buscarPersona(orig,n,cuentas,conocidas);
+  const cta=buscarCuenta(n,cuentas);
+  const per0=rangoPeriodo(n,ahora);
+  const enRango=(m)=>{ if(!per0) return true; const t=new Date(m.fecha); return t>=per0.ini && (!per0.fin||t<per0.fin); };
+  const quiereSal=/\b(gaste|gasto|gastos|gastamos|salio|salieron|salidas|pague|di|dimos|preste|perdi|perdidas)\b/.test(n);
+  const quiereEnt=/\b(gane|ganado|entro|entraron|entradas|vendi|ventas|recibi|cobre|me dio|me dieron|me pago|me trajo)\b/.test(n);
+  const periodoTxt=per0?' '+per0.nombre:'';
+
+  // a) Sobre una persona
+  if(per && conocidas.some(p=>norm(p)===norm(per.nombre))){
+    const lista=movs.filter(m=>norm(m.persona||'')===norm(per.nombre) && enRango(m)).sort((a,b)=>a.fecha<b.fecha?1:-1);
+    if(!lista.length) return {texto:`No tengo nada de ${per.nombre}${periodoTxt}.`,lista:[]};
+    const dio=lista.filter(m=>m.tipo==='salida').reduce((s,m)=>s+m.monto,0);
+    const rec=lista.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+m.monto,0);
+    const lineas=lista.slice(0,8).map(m=> m.tipo==='nota' ? `• ${fechaCorta(m.fecha)}: ${m.concepto}` :
+      `• ${fechaCorta(m.fecha)}: ${m.tipo==='salida'?'usted le dio':per.nombre+' le dio a usted'} ${pesos(m.monto)}${m.concepto&&!/^(gasto|entrada)$/i.test(m.concepto)?' — '+m.concepto:''} (${m.cuenta})`);
+    let t=`Con ${per.nombre}${periodoTxt}:\n`+lineas.join('\n');
+    if(lista.length>8) t+=`\n…y ${lista.length-8} más (vea Personas).`;
+    if(dio||rec) t+=`\n\nUsted le ha dado ${pesos(dio)}`+(rec?` y ha recibido de ${per.nombre} ${pesos(rec)}`:'')+'.';
+    const voz=`${per.nombre}${periodoTxt}: `+lista.slice(0,3).map(m=>m.tipo==='nota'?m.concepto:`${m.tipo==='salida'?'le dio':'recibió'} ${m.monto} pesos el ${fechaCorta(m.fecha)}${m.concepto?' para '+m.concepto:''}`).join('. ');
+    return {texto:t,voz,lista};
+  }
+
+  // c) Buscar por palabra (ej: "¿cuándo pagué la luz?")
+  const palabras=n.replace(PREGUNTA,'').split(/[^a-z]+/).filter(w=>w.length>2&&!['que','cuando','cuanto','pague','compre','di','le','la','el','los','las','del','para','con','por','una','uno','mis','fue','hice'].includes(w));
+  if(palabras.length && !cta && !per0){
+    const lista=movs.filter(m=>palabras.some(w=>norm(m.concepto+' '+m.texto+' '+(m.persona||'')).includes(w))).sort((a,b)=>a.fecha<b.fecha?1:-1);
+    if(lista.length){
+      const t='Encontré esto:\n'+lista.slice(0,8).map(m=>`• ${fechaCorta(m.fecha)}: ${m.tipo==='nota'?'':(m.tipo==='salida'?'salida ':'entrada ')+pesos(m.monto)+' — '}${m.concepto} (${m.cuenta}${m.persona?', '+m.persona:''})`).join('\n');
+      return {texto:t, voz:lista.slice(0,2).map(m=>`${fechaCorta(m.fecha)}: ${m.concepto}${m.monto?', '+m.monto+' pesos':''}`).join('. '), lista};
+    }
+  }
+  // b) Totales por casilla / período
+  if(cta || per0 || quiereSal || quiereEnt || /\b(balance|resumen|ganancia|gananc|perdida|como voy|como va|cuanto tengo|queda)\b/.test(n)){
+    const cts = cta ? [cta.cuenta] : cuentas.map(c=>c.nombre);
+    const p0 = per0 || {nombre:'este mes'}; const usarRango = per0 || (()=>{const d=new Date(ahora||Date.now());return {ini:new Date(d.getFullYear(),d.getMonth(),1),fin:null,nombre:'este mes'};})();
+    const dentro=(m)=>{const t=new Date(m.fecha);return t>=usarRango.ini&&(!usarRango.fin||t<usarRango.fin);};
+    const partes=[]; let vozP=[];
+    for(const c of cts){
+      const ms=movs.filter(m=>m.cuenta===c&&dentro(m));
+      const e=ms.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+m.monto,0);
+      const s=ms.filter(m=>m.tipo==='salida').reduce((s,m)=>s+m.monto,0);
+      if(!e&&!s&&!cta) continue;
+      if(quiereSal&&!quiereEnt){ partes.push(`${c}: salieron ${pesos(s)}`); vozP.push(`${c}, salieron ${s} pesos`); }
+      else if(quiereEnt&&!quiereSal){ partes.push(`${c}: entraron ${pesos(e)}`); vozP.push(`${c}, entraron ${e} pesos`); }
+      else { const g=e-s; partes.push(`${c}: entraron ${pesos(e)}, salieron ${pesos(s)} → ${g>=0?'ganancia':'pérdida'} ${pesos(Math.abs(g))}`); vozP.push(`${c}, ${g>=0?'ganancia':'pérdida'} de ${Math.abs(g)} pesos`); }
+    }
+    if(!partes.length) return {texto:`No hay movimientos ${usarRango.nombre}.`};
+    return {texto:`${capitalizar(usarRango.nombre)}:\n`+partes.join('\n'), voz:`${usarRango.nombre}: `+vozP.join('. ')};
+  }
+
+  return {texto:'No encontré nada sobre eso. Pruebe: «¿qué le di a Leo?», «¿cuánto gasté en Top Star este mes?» o «¿cómo voy?».'};
+}
+
+function personasDe(movs){ const s=new Map(); for(const m of movs) if(m.persona) s.set(norm(m.persona),m.persona); return [...s.values()]; }
+function pesos(v){ return '$'+Math.round(v||0).toLocaleString('es-CO'); }
+function fechaCorta(iso){ const d=new Date(iso); const ms=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']; return d.getDate()+' '+ms[d.getMonth()]+(d.getFullYear()!==new Date().getFullYear()?' '+d.getFullYear():''); }
+
+/* =====================================================================
+   3) GUARDADO — en la nube de Claude si se puede; si no, en este celular
+   ===================================================================== */
+const LS_KEY='adminVoz.v1';
+const S={ modo:'local', movs:[], cfg:{cuentas:JSON.parse(JSON.stringify(CUENTAS_INICIALES)), voz:true}, perfil:null, movsCol:null };
+
+function lsLeer(){ try{ const t=localStorage.getItem(LS_KEY); return t?JSON.parse(t):null; }catch(e){ return null; } }
+function lsGuardar(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({movs:S.movs,cfg:S.cfg})); }catch(e){} }
+
+function conTiempo(p,ms){ return Promise.race([p,new Promise((_,r)=>setTimeout(()=>r({code:'timeout'}),ms))]); }
+
+async function iniciarNube(){
+  try{
+    if(!(window.claude&&window.claude.use)) return false;
+    const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
+    if(!db||!user) return false;
+    const uid=await user.id(); if(!uid) return false;
+    const perfil=db.doc('data/users/'+uid+'/perfil');
+    const col=perfil.collection('movs');
+    const [ps,qs]=await conTiempo(Promise.all([perfil.get(),col.get()]),10000);
+    S.perfil=perfil; S.movsCol=col;
+    const nubeMovs=qs.docs.filter(d=>d.exists).map(d=>({...d.data(),id:d.id}));
+    if(ps.exists){ const c=ps.data(); if(c&&c.cfg) S.cfg=JSON.parse(JSON.stringify(c.cfg)); }
+    if(nubeMovs.length||ps.exists){
+      // unir: lo de la nube + lo que estaba solo en este celular
+      const ids=new Set(nubeMovs.map(m=>m.id));
+      const soloLocal=S.movs.filter(m=>!ids.has(m.id));
+      S.modo='nube'; S.movs=nubeMovs;
+      for(const m of soloLocal){ await nubeGuardarMov(m); S.movs.push(m); }
+    } else {
+      // primera vez en la nube: subir lo que había en el celular
+      S.modo='nube';
+      await perfil.set({cfg:S.cfg});
+      for(const m of S.movs) await nubeGuardarMov(m);
+    }
+    lsGuardar();
+    return true;
+  }catch(e){ S.modo='local'; S.perfil=null; S.movsCol=null; return false; }
+}
+async function nubeGuardarMov(m){ const c={...m}; delete c.id; await S.movsCol.doc(m.id).set(c); }
+
+async function guardarMov(m){
+  S.movs.push(m); lsGuardar();
+  if(S.modo==='nube'){ try{ await nubeGuardarMov(m); }catch(e){ pasarALocal(); } }
+}
+async function borrarMov(id){
+  S.movs=S.movs.filter(m=>m.id!==id); lsGuardar();
+  if(S.modo==='nube'){ try{ await S.movsCol.doc(id).delete(); }catch(e){ pasarALocal(); } }
+}
+let guardandoCfg=Promise.resolve();
+function guardarCfg(){
+  lsGuardar();
+  if(S.modo==='nube'){ guardandoCfg=guardandoCfg.then(()=>S.perfil.set({cfg:S.cfg})).catch(()=>pasarALocal()); }
+}
+function pasarALocal(){ S.modo='local'; pintarEstado(); aviso('Sin conexión a la nube: se guarda solo en este celular.'); }
+function nuevoId(){ return 'm'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+/* =====================================================================
+   4) PANTALLA
+   ===================================================================== */
+const $=(id)=>document.getElementById(id);
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function aviso(t){ const a=$('aviso'); a.textContent=t; a.classList.add('ver'); clearTimeout(aviso._t); aviso._t=setTimeout(()=>a.classList.remove('ver'),2600); }
+function preguntar(txt){ return new Promise(res=>{ $('modalTxt').textContent=txt; $('modal').classList.add('ver'); $('modalSi').onclick=()=>{ $('modal').classList.remove('ver'); res(true); }; $('modalNo').onclick=()=>{ $('modal').classList.remove('ver'); res(false); }; }); }
+function hablar(t){ if(!S.cfg.voz||!t) return; try{ const u=new SpeechSynthesisUtterance(t); u.lang='es-ES'; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} }
+function pintarEstado(){ $('estado').textContent = S.modo==='nube' ? '☁️ Guardado en su cuenta: lo ve desde cualquier celular donde abra esta app.' : '📱 Guardado en este celular. Haga copias de seguridad en Ajustes.'; }
+
+const EJEMPLOS=['me gasté 10.000 del negocio Top Star','me gané 50.000 en Top Star','gasté 20.000 de la licorería','entraron 50.000 en la licorería','gasté 10.000 en pasteles','le di 50.000 a Leo para compra de pan','¿qué le di a Leo?','¿cómo voy este mes?'];
+
+let pendiente=null;
+
+async function procesar(){
+  const txt=$('frase').value.trim(); if(!txt) { $('frase').focus(); return; }
+  const r=interpretar(txt,S.cfg.cuentas,personasDe(S.movs));
+  $('zonaRespuesta').innerHTML='';
+  if(r.pregunta){
+    const resp=responder(txt,S.movs,S.cfg.cuentas);
+    $('zonaConfirma').innerHTML='';
+    $('zonaRespuesta').innerHTML=`<div class="card respuesta"><div class="quien">Usted preguntó: ${esc(txt)}</div><p>${esc(resp.texto)}</p></div>`;
+    hablar(resp.voz||resp.texto);
+    $('frase').value='';
+    return;
+  }
+  pendiente={...r,id:nuevoId()};
+  pintarConfirma();
+}
+
+function pintarConfirma(){
+  const r=pendiente; if(!r){ $('zonaConfirma').innerHTML=''; return; }
+  const opC=S.cfg.cuentas.map(c=>`<option ${c.nombre===r.cuenta?'selected':''}>${esc(c.nombre)}</option>`).join('');
+  const fecha=r.fecha.slice(0,10);
+  $('zonaConfirma').innerHTML=`<div class="card confirma">
+    <h3>¿Lo anoto así?</h3>
+    <div class="campos">
+      <div><label>Tipo</label><select id="cTipo">
+        <option value="salida" ${r.tipo==='salida'?'selected':''}>➖ Salida / gasto</option>
+        <option value="entrada" ${r.tipo==='entrada'?'selected':''}>➕ Entrada</option>
+        <option value="nota" ${r.tipo==='nota'?'selected':''}>📝 Nota / recuerdo</option></select></div>
+      <div><label>Casilla</label><select id="cCuenta">${opC}</select></div>
+      <div><label>Monto</label><input id="cMonto" inputmode="numeric" value="${r.monto?Math.round(r.monto).toLocaleString('es-CO'):''}"></div>
+      <div><label>Fecha</label><input id="cFecha" type="date" value="${fecha}"></div>
+      <div><label>Persona (si aplica)</label><input id="cPersona" value="${esc(r.persona)}"></div>
+      <div><label>Concepto</label><input id="cConcepto" value="${esc(r.concepto)}"></div>
+    </div>
+    <div class="fila-btn"><button class="btn sec" id="cNo">Cancelar</button><button class="btn verde" id="cSi">Guardar ✓</button></div>
+  </div>`;
+  $('cNo').onclick=()=>{ pendiente=null; pintarConfirma(); };
+  $('cSi').onclick=async()=>{
+    const tipo=$('cTipo').value;
+    const monto=parseInt(($('cMonto').value||'0').replace(/\D/g,''),10)||0;
+    if(tipo!=='nota'&&!monto){ aviso('Falta el monto'); $('cMonto').focus(); return; }
+    const f=$('cFecha').value; const hoy=new Date();
+    const fecha = f ? new Date(f+'T'+hoy.toTimeString().slice(0,8)).toISOString() : hoy.toISOString();
+    const m={id:pendiente.id,tipo,monto:tipo==='nota'?0:monto,cuenta:$('cCuenta').value,persona:$('cPersona').value.trim(),concepto:$('cConcepto').value.trim()||(tipo==='nota'?pendiente.texto:'Movimiento'),fecha,texto:pendiente.texto};
+    pendiente=null; pintarConfirma(); $('frase').value='';
+    await guardarMov(m);
+    const msg = tipo==='nota' ? 'Nota guardada' : `${tipo==='entrada'?'Entrada':'Salida'} de ${pesos(m.monto)} en ${m.cuenta}`;
+    aviso('✓ '+msg); hablar(tipo==='nota'?'Nota guardada':`Anotado: ${tipo==='entrada'?'entrada':'salida'} de ${m.monto} pesos en ${m.cuenta}`);
+    pintarTodo();
+  };
+}
+
+function filaMov(m,borrable){
+  const signo=m.tipo==='entrada'?'+':m.tipo==='salida'?'−':'✎';
+  const t2=[fechaCorta(m.fecha),m.cuenta,m.persona].filter(Boolean).join(' · ');
+  return `<div class="mov"><div class="ic ${m.tipo}">${signo}</div><div class="tx"><div class="t1">${esc(m.concepto)}</div><div class="t2">${esc(t2)}</div></div>
+    ${m.tipo!=='nota'?`<div class="monto ${m.tipo==='entrada'?'pos':'neg'}">${signo}${pesos(m.monto).slice(1)}</div>`:''}
+    ${borrable?`<button class="x" data-borrar="${m.id}" title="Borrar">✕</button>`:''}</div>`;
+}
+function ordenados(){ return [...S.movs].sort((a,b)=>a.fecha<b.fecha?1:-1); }
+
+function pintarInicio(){
+  const d=new Date(); const ini=new Date(d.getFullYear(),d.getMonth(),1);
+  const delMes=S.movs.filter(m=>new Date(m.fecha)>=ini);
+  $('resumenCuentas').innerHTML=S.cfg.cuentas.map(c=>{
+    const ms=delMes.filter(m=>m.cuenta===c.nombre);
+    const e=ms.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+m.monto,0), s=ms.filter(m=>m.tipo==='salida').reduce((s,m)=>s+m.monto,0), g=e-s;
+    return `<div class="card cuenta"><h4>${esc(c.nombre)}</h4>
+      <div class="linea"><span>Entradas</span><span class="pos">${pesos(e)}</span></div>
+      <div class="linea"><span>Salidas</span><span class="neg">${pesos(s)}</span></div>
+      <div class="linea total"><span>${g>=0?'Ganancia':'Pérdida'}</span><span class="${g>=0?'pos':'neg'}">${pesos(Math.abs(g))}</span></div></div>`;
+  }).join('');
+  const ult=ordenados().slice(0,6);
+  $('ultimos').innerHTML= ult.length ? ult.map(m=>filaMov(m,true)).join('') : '<div class="vacio">Todavía no hay nada. Diga su primer movimiento arriba 👆</div>';
+}
+
+let fCuenta='Todas', fTipo='todos';
+function pintarMovs(){
+  $('filtroCuenta').innerHTML=['Todas',...S.cfg.cuentas.map(c=>c.nombre)].map(c=>`<button class="chip ${c===fCuenta?'on':''}" data-fc="${esc(c)}">${esc(c)}</button>`).join('');
+  $('filtroTipo').innerHTML=[['todos','Todo'],['entrada','Entradas'],['salida','Salidas'],['nota','Notas']].map(([k,t])=>`<button class="chip ${k===fTipo?'on':''}" data-ft="${k}">${t}</button>`).join('');
+  const q=norm($('buscar').value.trim());
+  const lista=ordenados().filter(m=>(fCuenta==='Todas'||m.cuenta===fCuenta)&&(fTipo==='todos'||m.tipo===fTipo)&&(!q||norm(m.concepto+' '+m.persona+' '+m.texto+' '+m.cuenta).includes(q)));
+  const e=lista.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+m.monto,0), s=lista.filter(m=>m.tipo==='salida').reduce((s,m)=>s+m.monto,0);
+  $('listaMovs').innerHTML= lista.length ? `<div class="linea" style="margin-bottom:6px"><span>${lista.length} movimientos</span><span><span class="pos">+${pesos(e).slice(1)}</span> · <span class="neg">−${pesos(s).slice(1)}</span></span></div>`+lista.map(m=>filaMov(m,true)).join('') : '<div class="vacio">No hay movimientos con ese filtro.</div>';
+}
+
+let sCuenta='Todas';
+function pintarStats(){
+  $('statsCuenta').innerHTML=['Todas',...S.cfg.cuentas.map(c=>c.nombre)].map(c=>`<button class="chip ${c===sCuenta?'on':''}" data-sc="${esc(c)}">${esc(c)}</button>`).join('');
+  const d=new Date(); const meses=[];
+  for(let i=5;i>=0;i--){ const a=new Date(d.getFullYear(),d.getMonth()-i,1), b=new Date(d.getFullYear(),d.getMonth()-i+1,1);
+    const ms=S.movs.filter(m=>(sCuenta==='Todas'||m.cuenta===sCuenta)&&new Date(m.fecha)>=a&&new Date(m.fecha)<b);
+    meses.push({nom:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][a.getMonth()],e:ms.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+m.monto,0),s:ms.filter(m=>m.tipo==='salida').reduce((s,m)=>s+m.monto,0)}); }
+  const max=Math.max(1,...meses.map(m=>Math.max(m.e,m.s)));
+  $('barras').innerHTML=meses.map(m=>`<div class="mes"><div class="par"><div class="bar e" style="height:${m.e/max*100}%" title="Entradas ${pesos(m.e)}"></div><div class="bar s" style="height:${m.s/max*100}%" title="Salidas ${pesos(m.s)}"></div></div></div>`).join('');
+  $('etqBarras').innerHTML=meses.map(m=>`<div>${m.nom}</div>`).join('');
+  $('tablaMeses').innerHTML='<tr><th>Mes</th><th>Entradas</th><th>Salidas</th><th>Resultado</th></tr>'+[...meses].reverse().map(m=>{const g=m.e-m.s;return `<tr><td>${m.nom}</td><td class="pos">${pesos(m.e)}</td><td class="neg">${pesos(m.s)}</td><td class="${g>=0?'pos':'neg'}"><b>${g>=0?'+':'−'}${pesos(Math.abs(g)).slice(1)}</b></td></tr>`;}).join('');
+  const ini=new Date(d.getFullYear(),d.getMonth(),1); const agr=new Map();
+  for(const m of S.movs) if(m.tipo==='salida'&&new Date(m.fecha)>=ini&&(sCuenta==='Todas'||m.cuenta===sCuenta)){ const k=capitalizar(norm(m.concepto||'otro')); agr.set(k,(agr.get(k)||0)+m.monto); }
+  const top=[...agr.entries()].sort((a,b)=>b[1]-a[1]).slice(0,6); const tmax=top.length?top[0][1]:1;
+  $('topGastos').innerHTML= top.length ? top.map(([k,v])=>`<div style="margin:6px 0"><div class="linea"><span>${esc(k)}</span><span class="neg">${pesos(v)}</span></div><div style="height:6px;background:var(--rojo-s);border-radius:3px"><div style="height:6px;width:${v/tmax*100}%;background:var(--rojo);border-radius:3px"></div></div></div>`).join('') : '<div class="vacio">Sin gastos este mes.</div>';
+}
+
+let personaSel=null;
+function pintarPersonas(){
+  const ps=personasDe(S.movs).map(p=>{ const ms=S.movs.filter(m=>norm(m.persona||'')===norm(p)); return {p,dio:ms.filter(m=>m.tipo==='salida').reduce((s,m)=>s+m.monto,0),rec:ms.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+m.monto,0),n:ms.length}; }).sort((a,b)=>b.n-a.n);
+  $('listaPersonas').innerHTML= ps.length ? '<table><tr><th>Persona</th><th>Le di</th><th>Me dio</th></tr>'+ps.map(x=>`<tr class="persona" data-per="${esc(x.p)}"><td><b>${esc(x.p)}</b> <span style="color:var(--mute);font-size:12px">(${x.n})</span></td><td class="neg">${pesos(x.dio)}</td><td class="pos">${pesos(x.rec)}</td></tr>`).join('')+'</table>' : '<div class="vacio">Aún no hay personas. Diga por ejemplo: «le di 50.000 a Leo para compra de pan».</div>';
+  if(personaSel){ const ms=ordenados().filter(m=>norm(m.persona||'')===norm(personaSel)); $('detallePersona').innerHTML=`<h2>Historial con ${esc(personaSel)}</h2><div class="card">${ms.map(m=>filaMov(m,false)).join('')||'<div class="vacio">Nada.</div>'}</div>`; } else $('detallePersona').innerHTML='';
+  const notas=ordenados().filter(m=>m.tipo==='nota');
+  $('listaNotas').innerHTML= notas.length ? notas.map(m=>filaMov(m,true)).join('') : '<div class="vacio">Diga «anota que…» o «recuerda que…» para guardar un recuerdo sin dinero.</div>';
+}
+
+function pintarAjustes(){
+  $('listaCuentas').innerHTML=S.cfg.cuentas.map((c,i)=>`<div class="mov"><div class="tx"><div class="t1">${esc(c.nombre)}</div><div class="t2">Se reconoce como: ${esc(c.alias.join(', '))}</div></div>${c.nombre==='Personal'?'':`<button class="x" data-quitarc="${i}" title="Quitar">✕</button>`}</div>`).join('');
+  $('optVoz').checked=!!S.cfg.voz;
+}
+
+function pintarTodo(){ pintarEstado(); pintarInicio(); pintarMovs(); pintarStats(); pintarPersonas(); pintarAjustes(); }
+
+/* ---------- eventos ---------- */
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  ['inicio','movs','stats','personas','ajustes'].forEach(v=>$('v-'+v).classList.toggle('oculto',v!==b.dataset.v));
+  pintarTodo(); window.scrollTo(0,0);
+});
+$('enviar').onclick=procesar;
+$('frase').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); procesar(); } });
+$('ejemplos').innerHTML=EJEMPLOS.map(t=>`<button>${esc(t)}</button>`).join('');
+$('ejemplos').onclick=e=>{ if(e.target.tagName==='BUTTON'){ $('frase').value=e.target.textContent; procesar(); } };
+$('buscar').oninput=pintarMovs;
+document.body.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-borrar],[data-fc],[data-ft],[data-sc],[data-per],[data-quitarc]'); if(!t) return;
+  if(t.dataset.borrar){ const m=S.movs.find(x=>x.id===t.dataset.borrar); if(m&&await preguntar(`¿Borrar «${m.concepto}»${m.monto?' de '+pesos(m.monto):''}?`)){ await borrarMov(m.id); pintarTodo(); aviso('Borrado'); } }
+  else if(t.dataset.fc){ fCuenta=t.dataset.fc; pintarMovs(); }
+  else if(t.dataset.ft){ fTipo=t.dataset.ft; pintarMovs(); }
+  else if(t.dataset.sc){ sCuenta=t.dataset.sc; pintarStats(); }
+  else if(t.dataset.per){ personaSel=t.dataset.per; pintarPersonas(); $('detallePersona').scrollIntoView({behavior:'smooth'}); }
+  else if(t.dataset.quitarc){ const c=S.cfg.cuentas[+t.dataset.quitarc]; if(await preguntar(`¿Quitar la casilla «${c.nombre}»? Los movimientos ya guardados no se borran.`)){ S.cfg.cuentas.splice(+t.dataset.quitarc,1); guardarCfg(); pintarTodo(); } }
+});
+$('agregarCuenta').onclick=()=>{
+  const nom=$('nuevaCuenta').value.trim(); if(!nom){ aviso('Escriba el nombre'); return; }
+  if(S.cfg.cuentas.some(c=>norm(c.nombre)===norm(nom))){ aviso('Esa casilla ya existe'); return; }
+  const alias=[norm(nom),...$('nuevaAlias').value.split(',').map(a=>norm(a.trim())).filter(Boolean)];
+  S.cfg.cuentas.splice(S.cfg.cuentas.length-1,0,{nombre:nom,alias}); guardarCfg();
+  $('nuevaCuenta').value=''; $('nuevaAlias').value=''; pintarTodo(); aviso('Casilla agregada');
+};
+$('optVoz').onchange=()=>{ S.cfg.voz=$('optVoz').checked; guardarCfg(); };
+$('copiarRespaldo').onclick=async()=>{
+  const txt=JSON.stringify({app:'adminVoz',fecha:new Date().toISOString(),movs:S.movs,cfg:S.cfg});
+  $('respaldoTxt').value=txt;
+  try{ await navigator.clipboard.writeText(txt); aviso('Copiado ✓ Péguelo en WhatsApp o un correo'); }
+  catch(e){ $('respaldoTxt').select(); aviso('Seleccione el texto de abajo y cópielo'); }
+};
+$('restaurar').onclick=async()=>{
+  let d; try{ d=JSON.parse($('respaldoTxt').value); }catch(e){ aviso('Ese texto no es un respaldo válido'); return; }
+  if(!d||!Array.isArray(d.movs)){ aviso('Ese texto no es un respaldo válido'); return; }
+  if(!await preguntar(`¿Agregar ${d.movs.length} movimientos del respaldo? (los repetidos se saltan)`)) return;
+  const ids=new Set(S.movs.map(m=>m.id)); let n=0;
+  for(const m of d.movs) if(m&&m.id&&!ids.has(m.id)&&typeof m.monto==='number'){ await guardarMov({id:String(m.id),tipo:['entrada','salida','nota'].includes(m.tipo)?m.tipo:'nota',monto:m.monto,cuenta:String(m.cuenta||'Personal'),persona:String(m.persona||''),concepto:String(m.concepto||''),fecha:String(m.fecha||new Date().toISOString()),texto:String(m.texto||'')}); n++; }
+  if(d.cfg&&Array.isArray(d.cfg.cuentas)){ for(const c of d.cfg.cuentas) if(c&&c.nombre&&!S.cfg.cuentas.some(x=>x.nombre===c.nombre)) S.cfg.cuentas.splice(S.cfg.cuentas.length-1,0,{nombre:String(c.nombre),alias:(c.alias||[]).map(String)}); guardarCfg(); }
+  $('respaldoTxt').value=''; pintarTodo(); aviso(`${n} movimientos restaurados`);
+};
+$('borrarTodo').onclick=async()=>{
+  if(!await preguntar('¿Seguro? Se borra TODO. Haga una copia de seguridad antes.')) return;
+  for(const m of [...S.movs]) await borrarMov(m.id);
+  pintarTodo(); aviso('Todo borrado');
+};
+
+/* ---------- micrófono ---------- */
+(function(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const btn=$('mic');
+  if(!SR){ btn.onclick=()=>{ $('frase').focus(); aviso('Use el micrófono 🎤 de su teclado'); }; return; }
+  let rec=null, oyendo=false;
+  btn.onclick=()=>{
+    if(oyendo){ try{rec.stop();}catch(e){} return; }
+    try{
+      rec=new SR(); rec.lang='es-CO'; rec.interimResults=true; rec.continuous=false;
+      const base=$('frase').value?$('frase').value.trim()+' ':'';
+      rec.onresult=(ev)=>{ let t=''; for(const r of ev.results) t+=r[0].transcript; $('frase').value=base+t; };
+      rec.onerror=(ev)=>{ if(ev.error==='not-allowed'||ev.error==='service-not-allowed'||ev.error==='audio-capture'){ aviso('Aquí el 🎤 está bloqueado: use el micrófono del teclado'); $('frase').focus(); } };
+      rec.onend=()=>{ oyendo=false; btn.classList.remove('oyendo'); if($('frase').value.trim()) procesar(); };
+      rec.start(); oyendo=true; btn.classList.add('oyendo');
+    }catch(e){ $('frase').focus(); aviso('Use el micrófono 🎤 de su teclado'); }
+  };
+})();
+
+/* ---------- arranque ---------- */
+(async function(){
+  const l=lsLeer(); if(l){ if(Array.isArray(l.movs)) S.movs=l.movs; if(l.cfg&&Array.isArray(l.cfg.cuentas)) S.cfg=l.cfg; }
+  pintarTodo();
+  await new Promise(r=>setTimeout(r,0));
+  if(await iniciarNube()) pintarTodo();
+})();
+</script>
+</body>
+</html>
