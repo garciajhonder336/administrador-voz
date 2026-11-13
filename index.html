@@ -95,6 +95,7 @@ textarea.json{width:100%;min-height:90px;font-family:monospace;font-size:12px;bo
 .modal .card{max-width:420px;width:100%}
 .oculto{display:none!important}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <header>
@@ -165,14 +166,16 @@ textarea.json{width:100%;min-height:90px;font-family:monospace;font-size:12px;bo
       <div class="fila-btn"><button class="btn sec" id="nfCrear">Empezar factura nueva</button></div>
     </div>
     <div id="abonoViejas"></div>
-    <h2>Proveedores</h2>
+    <h2>Proveedores y personas</h2>
+    <div class="tip" style="margin-bottom:8px">Aquí puede agregar tanto proveedores a los que usted les debe (cerveza, Coca-Cola...) como personas que le deben plata a usted. Cada abono que registre dirá quién le pagó a quién.</div>
     <div class="card">
       <div id="listaGrupos"></div>
       <div class="campos" style="margin-top:10px">
-        <div><label>Proveedor nuevo</label><input id="nuevoGrupo" placeholder="Ej: Pepsi"></div>
+        <div><label>Nombre (proveedor o persona)</label><input id="nuevoGrupo" placeholder="Ej: Pepsi, o Juan Pérez"></div>
         <div><label>Otras formas de decirlo</label><input id="nuevoGrupoAlias" placeholder="Ej: pepsi cola, la pepsi"></div>
+        <div><label>¿De qué negocio es esta cuenta?</label><select id="nuevoGrupoCuenta"></select></div>
       </div>
-      <div class="fila-btn"><button class="btn" id="agregarGrupo">Agregar proveedor</button></div>
+      <div class="fila-btn"><button class="btn" id="agregarGrupo">Agregar cuenta</button></div>
     </div>
   </section>
 
@@ -196,6 +199,32 @@ textarea.json{width:100%;min-height:90px;font-family:monospace;font-size:12px;bo
         <div><label>Otras formas de decirlo</label><input id="nuevaAlias" placeholder="Ej: pana, la panadería"></div>
       </div>
       <div class="fila-btn"><button class="btn" id="agregarCuenta">Agregar casilla</button></div>
+    </div>
+
+    <h2>☁️ Guardar en la nube</h2>
+    <div class="card" id="nubeCaja">
+      <div id="nubeSinConfig">
+        <div class="tip" style="margin-top:0">Pegue aquí los 2 datos de su proyecto de Supabase (Project Settings → API). Solo se hace una vez en cada celular.</div>
+        <div class="campos" style="margin-top:8px">
+          <div class="ancho"><label>Project URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co" autocomplete="off"></div>
+          <div class="ancho"><label>anon public key</label><input id="sbKey" placeholder="eyJhbGciOi..." autocomplete="off"></div>
+        </div>
+        <div class="fila-btn"><button class="btn" id="sbConectar">Conectar</button></div>
+      </div>
+      <div id="nubeLogin" class="oculto">
+        <div class="tip" style="margin-top:0">Entre con su correo. Cada persona (usted, su hermana…) usa su propio correo y ve solo sus datos.</div>
+        <div class="campos" style="margin-top:8px">
+          <div class="ancho"><label>Correo</label><input id="sbCorreo" type="email" autocomplete="email"></div>
+          <div class="ancho"><label>Contraseña (mínimo 6 letras o números)</label><input id="sbClave" type="password" autocomplete="current-password"></div>
+        </div>
+        <div class="fila-btn"><button class="btn sec" id="sbCrear">Crear cuenta</button><button class="btn" id="sbEntrar">Entrar</button></div>
+        <div class="fila-btn"><button class="btn sec" id="sbOlvidarCfg" style="font-size:13px">Cambiar datos de Supabase</button></div>
+      </div>
+      <div id="nubeOk" class="oculto">
+        <div class="linea"><span>Conectado como</span><b id="sbQuien"></b></div>
+        <div class="tip">Todo lo que anote se guarda en internet. Entre con el mismo correo en otro celular y verá lo mismo.</div>
+        <div class="fila-btn"><button class="btn sec" id="sbSync">🔄 Actualizar ahora</button><button class="btn sec" id="sbSalir">Cerrar sesión</button></div>
+      </div>
     </div>
 
     <h2>Voz</h2>
@@ -239,14 +268,16 @@ const MESES_N=['enero','febrero','marzo','abril','mayo','junio','julio','agosto'
 const CUENTAS_INICIALES = [
   {nombre:'Top Star', alias:['top star','topstar','top start','top estar','tops star','top esta','topstart']},
   {nombre:'Licorería', alias:['licoreria','licorera','licor','la licore']},
+  {nombre:'Coca-Cola', alias:['coca cola','cocacola','coca-cola']},
+  {nombre:'Charcutería', alias:['charcuteria','carniceria','la charcuteria','la carniceria']},
   {nombre:'Personal', alias:['personal','personales','mis gastos','para mi','mi casa','la casa']}
 ];
 
 function nuevaFactura(desde,valor,costo){ return {id:'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desde:desde||new Date().toISOString(), valor:valor||0, costo:costo||0}; }
 function gruposIniciales(){ return [
-  {nombre:'Cerveza', alias:['cerveza','cervezas','polar','la cerveza','birra'], facturas:[nuevaFactura()]},
-  {nombre:'Coca-Cola', alias:['coca cola','cocacola','coca-cola','coca','la coca'], facturas:[nuevaFactura()]},
-  {nombre:'Víveres', alias:['viveres','los viveres','vivere','mercancia de viveres','abarrotes'], facturas:[nuevaFactura()]}
+  {nombre:'Cerveza', alias:['cerveza','cervezas','polar','la cerveza','birra'], cuenta:'Licorería', facturas:[nuevaFactura()]},
+  {nombre:'Coca-Cola', alias:['coca cola','cocacola','coca-cola','coca','la coca'], cuenta:'Coca-Cola', facturas:[nuevaFactura()]},
+  {nombre:'Víveres', alias:['viveres','los viveres','vivere','mercancia de viveres','abarrotes'], cuenta:'Top Star', facturas:[nuevaFactura()]}
 ]; }
 const MEDIOS=[['Nequi',/\b(nequi|neki|nequis|nekis|nequy)\b/],['Daviplata',/\bdaviplata\b/],['Pago móvil',/\bpago\s*movil\b/],['Transferencia',/\b(transferencia|transfirio|transfirieron|consignacion|consigno|consignaron|bancolombia|banco)\b/],['Efectivo',/\b(efectivo|en mano|cash)\b/]];
 function buscarMedio(n){ for(const [nom,re] of MEDIOS){ const r=n.match(re); if(r) return {medio:nom,ini:r.index,fin:r.index+r[0].length}; } return null; }
@@ -255,6 +286,17 @@ function buscarGrupo(n,grupos){
   return null;
 }
 const ABONO=/\b(abono|abonos|abonaron|abono|abonar|abone|abonamos|abonando)\b/;
+// Dirección del abono: ¿sale plata de mi bolsillo (DOY) o entra a mi bolsillo (RECIBO)?
+const SENT_RECIBO=/\bme\s+\w*\s*(abon|pag|dio|dieron|trajo|trajeron|deposito|depositaron|consigno|consignaron)/;
+const SENT_DOY=/\b(le|les)\s+\w*\s*(abon|pag|di\b|dimos|entregue|entregamos|cancel)\b|\b(pague|pagamos|abone|abonamos|di|dimos|entregue|entregamos|cancele|cancelamos|invert[ií]|invertimos|invirtieron|reinvert[ií]|reinvertimos)\b/;
+const CAT_INVERSION=/\b(invert[ií]|inversion|inversiones|reinvert[ií]|reinversion)\b/;
+const CAT_VENTA=/\b(venta|ventas|vendi|vendimos|vendieron|vendio)\b/;
+const CAT_RETIRO=/\b(retire|retiro|retiramos|retiraron|me lleve|saque para mi|sac[óo] para (el|su) (gasto|personal)|saque la ganancia)\b/;
+function detectarSentido(n,grupoTipo){
+  if(SENT_RECIBO.test(n)) return 'recibo';
+  if(SENT_DOY.test(n)) return 'doy';
+  return grupoTipo==='doy'?'doy':'recibo';
+}
 
 // Quita tildes y pasa a minúsculas SIN cambiar el largo del texto
 function norm(s){
@@ -315,6 +357,7 @@ const STOP = new Set(('me yo se nos te la el los las lo le les mi mis tu su sus 
  'mil cuenta caja banco tienda local pedido pedidos factura todo todos nada eso esto esa ese este esta ver vender pasaje transporte taxi '+
  'gasolina medicina remedios almuerzo desayuno cena comprarle cobrar trabajo nomina sueldo cliente clientes proveedor mercancia '+
  'cerveza cervezas licor ron fiado inventario pedir hacer ir traer llevar abono abonos factura facturas coca cola cocacola polar '+
+ 'inversion inversiones invertir invirtio invirtieron ganancia ganancias perdida perdidas debe deben debiendo aboname abonen abonar '+
  'nequi neki nequis daviplata transferencia efectivo movil bancolombia mano plata '+MESES_N.join(' ')).split(' '));
 
 function esCuentaPalabra(w,cuentas){ return cuentas.some(c=>c.alias.concat([norm(c.nombre)]).some(a=>a.split(' ').includes(w))); }
@@ -400,8 +443,10 @@ function interpretar(texto,cuentas,conocidas,ahora,grupos){
   const fch=buscarFechaTexto(n,ahora);
   const nSF=fch?n.slice(0,fch.ini)+' '.repeat(fch.fin-fch.ini)+n.slice(fch.fin):n;
   const monto=buscarMonto(nSF);
-  const esAbono=ABONO.test(n);
   const grp=buscarGrupo(n,grupos);
+  // Si menciona un proveedor/persona conocido de Abonos junto con un verbo de pago,
+  // cuenta como abono aunque no diga la palabra "abono" (ej: "le pagué a Coca-Cola").
+  const esAbono=ABONO.test(n) || (grp!=null && (SENT_DOY.test(n) || SENT_RECIBO.test(n) || /\b(pague|pagamos|pagaron|pago|di|dimos|dieron|entregue|entregamos|cancele|cancelamos|invert[ií]|invertimos|invirtieron|reinvert[ií]|reinvertimos|trajo|trajeron)\b/.test(n)));
   const med=buscarMedio(n);
   const cta=esAbono?null:buscarCuenta(n,cuentas);
   const per=buscarPersona(orig,nSF,cuentas,conocidas);
@@ -434,16 +479,25 @@ function interpretar(texto,cuentas,conocidas,ahora,grupos){
   if(tipo==='nota') concepto=orig.replace(NOTA,'').replace(/^\s*(que)\s+/i,'').trim()||orig;
   concepto=capitalizar(concepto);
   if(tipo==='abono'){
-    return {pregunta:false,tipo,monto:monto?monto.monto:0,cuenta:'Abonos',
-      grupo: grp?grp.grupo:((grupos&&grupos[0])?grupos[0].nombre:''),
-      medio: med?med.medio:'Efectivo',
+    const nombreGrp = grp?grp.grupo:((grupos&&grupos[0])?grupos[0].nombre:'');
+    const gFull = (grupos||[]).find(x=>x.nombre===nombreGrp);
+    return {pregunta:false,tipo,monto:monto?monto.monto:0,cuenta:(gFull&&gFull.cuenta)||'Personal',
+      grupo: nombreGrp,
+      medio: med?med.medio:'Efectivo', sentido: detectarSentido(n),
       persona: per?per.nombre:'', concepto: concepto||'', fecha: fch?fch.iso:detectarFecha(n,ahora), texto: orig};
   }
+  let categoria;
+  if(tipo==='salida') categoria = CAT_RETIRO.test(n)?'retiro':(CAT_INVERSION.test(n)?'inversion':'gasto');
+  else if(tipo==='entrada') categoria = CAT_VENTA.test(n)?'venta':'otro';
+  // Si no dijo una casilla directamente pero mencionó un proveedor/persona de Abonos (ej. "coca cola"),
+  // use el negocio al que pertenece ese proveedor, en vez de caer siempre en "Personal".
+  const grpFull = !cta && grp ? (grupos||[]).find(x=>x.nombre===grp.grupo) : null;
   return {
     pregunta:false, tipo,
     monto: monto?monto.monto:0,
-    cuenta: cta?cta.cuenta:'Personal',
+    cuenta: cta?cta.cuenta:(grpFull?grpFull.cuenta:'Personal'),
     persona: per?per.nombre:'',
+    categoria,
     concepto: concepto || (tipo==='entrada'?'Entrada':tipo==='salida'?'Gasto':'Nota'),
     fecha: fch?fch.iso:detectarFecha(n,ahora),
     texto: orig
@@ -486,12 +540,12 @@ function responder(texto,movs,cuentas,ahora){
     const partes=[], vozP=[];
     for(const gr of lista){
       const r=resumenFactura(gr,movs);
-      let t=`${gr.nombre} (factura del ${fechaLarga(r.f.desde)}): abonado ${pesos(r.total)} en ${r.lista.length} abono${r.lista.length===1?'':'s'}`;
       const k=cuentasFactura(r);
+      let t=`${gr.nombre} (factura del ${fechaLarga(r.f.desde)}): le han abonado ${pesos(r.total)}`+(r.totalDoy?`, usted ha pagado ${pesos(r.totalDoy)}`:'')+` en ${r.lista.length} abono${r.lista.length===1?'':'s'}`;
       if(r.f.valor) t+=`, le quedan debiendo ${pesos(k.debe)}`;
-      if(k.ganHoy!==null) t+=k.ganHoy>=0?`. Ganancia hasta hoy: ${pesos(k.ganHoy)}`:`. Falta ${pesos(-k.ganHoy)} para recuperar lo que pagó`;
-      if(g) t+='\n'+r.lista.map(m=>`• ${fechaCorta(m.fecha)}: ${pesos(m.monto)} ${m.medio||''}${m.persona?' ('+m.persona+')':''}`).join('\n');
-      partes.push(t); {const k=cuentasFactura(r); vozP.push(`${gr.nombre}: llevan ${r.total} pesos abonados`+(r.f.valor?`, le quedan debiendo ${k.debe}`:'')+(k.ganHoy!==null?(k.ganHoy>=0?`, ganancia ${k.ganHoy}`:`, falta ${-k.ganHoy} para recuperar`):''));}
+      if(k.ganHoy===0) t+='. Todo cuadrado ✓'; else if(k.ganHoy!==null) t+=k.ganHoy>=0?`. Ganancia hasta hoy: ${pesos(k.ganHoy)}`:(r.f.valor?`. Falta ${pesos(-k.ganHoy)} para recuperar lo que pagó`:`. Le debe a usted ${pesos(-k.ganHoy)}`);
+      if(g) t+='\n'+r.lista.map(m=>`• ${fechaCorta(m.fecha)}: ${m.sentido==='doy'?'🔴 usted pagó':'🟢 le abonaron'} ${pesos(m.monto)} ${m.medio||''}${m.persona?' ('+m.persona+')':''}`).join('\n');
+      partes.push(t); vozP.push(`${gr.nombre}: le han abonado ${r.total} pesos`+(r.totalDoy?`, usted ha pagado ${r.totalDoy}`:'')+(r.f.valor?`, le quedan debiendo ${k.debe}`:'')+(k.ganHoy===0?', todo cuadrado':k.ganHoy!==null?(k.ganHoy>=0?`, ganancia ${k.ganHoy}`:(r.f.valor?`, falta ${-k.ganHoy} para recuperar`:`, le debe ${-k.ganHoy}`)):''));
     }
     if(!partes.length) return {texto:'Todavía no hay proveedores de abonos. Agréguelos en la pestaña Abonos.'};
     return {texto:partes.join('\n\n'),voz:vozP.join('. ')};
@@ -549,11 +603,13 @@ function facturaActual(g){ return g.facturas[g.facturas.length-1]; }
 function resumenFactura(g,movs,f){
   f=f||facturaActual(g);
   const lista=movs.filter(m=>m.tipo==='abono'&&m.grupo===g.nombre&&m.facturaId===f.id).sort((a,b)=>a.fecha<b.fecha?-1:1);
-  return {f,lista,total:lista.reduce((s,m)=>s+m.monto,0)};
+  const recibo=lista.filter(m=>m.sentido!=='doy'); // sin marca = recibo (compatibilidad con lo guardado antes)
+  const doy=lista.filter(m=>m.sentido==='doy');
+  return {f,lista,total:recibo.reduce((s,m)=>s+m.monto,0),totalDoy:doy.reduce((s,m)=>s+m.monto,0)};
 }
 function cuentasFactura(r){
-  const v=r.f.valor||0, c=r.f.costo||0, a=r.total;
-  return {debe: v?Math.max(0,v-a):0, ganHoy: c?a-c:null, ganFinal:(v&&c)?v-c:null};
+  const v=r.f.valor||0, costoEf=(r.f.costo||0)+(r.totalDoy||0), a=r.total;
+  return {debe: v?Math.max(0,v-a):0, costoEf, ganHoy: costoEf?a-costoEf:null, ganFinal:(v&&costoEf)?v-costoEf:null};
 }
 function fechaLarga(iso){ const d=new Date(iso); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
 function personasDe(movs){ const s=new Map(); for(const m of movs) if(m.persona) s.set(norm(m.persona),m.persona); return [...s.values()]; }
@@ -565,7 +621,29 @@ function fechaCorta(iso){ const d=new Date(iso); const ms=['ene','feb','mar','ab
    ===================================================================== */
 const LS_KEY='adminVoz.v1';
 const S={ modo:'local', movs:[], cfg:{cuentas:JSON.parse(JSON.stringify(CUENTAS_INICIALES)), voz:true, abonos:gruposIniciales()}, perfil:null, movsCol:null };
-function asegurarCfg(){ if(!Array.isArray(S.cfg.abonos)) S.cfg.abonos=gruposIniciales(); if(!S.cfg.conViveres){ if(!S.cfg.abonos.some(g=>norm(g.nombre)==='viveres')) S.cfg.abonos.push(gruposIniciales()[2]); S.cfg.conViveres=true; } for(const g of S.cfg.abonos){ if(!Array.isArray(g.facturas)||!g.facturas.length) g.facturas=[nuevaFactura()]; if(!Array.isArray(g.alias)) g.alias=[norm(g.nombre)]; } }
+function asegurarCfg(){
+  if(!Array.isArray(S.cfg.abonos)) S.cfg.abonos=gruposIniciales();
+  if(!S.cfg.conViveres){ if(!S.cfg.abonos.some(g=>norm(g.nombre)==='viveres')) S.cfg.abonos.push(gruposIniciales()[2]); S.cfg.conViveres=true; }
+  if(!S.cfg.conCocaIndependiente){
+    if(!S.cfg.cuentas.some(c=>norm(c.nombre)==='coca cola'||norm(c.nombre)==='cocacola')) S.cfg.cuentas.push({nombre:'Coca-Cola', alias:['coca cola','cocacola','coca-cola']});
+    const gc=S.cfg.abonos.find(g=>norm(g.nombre)==='coca cola'||norm(g.nombre)==='cocacola'||norm(g.nombre)==='coca-cola');
+    if(gc) gc.cuenta='Coca-Cola';
+    S.cfg.conCocaIndependiente=true;
+  }
+  if(!S.cfg.conCharcuteria){
+    if(!S.cfg.cuentas.some(c=>norm(c.nombre)==='charcuteria'||norm(c.nombre)==='carniceria')) S.cfg.cuentas.push({nombre:'Charcutería', alias:['charcuteria','carniceria','la charcuteria','la carniceria']});
+    S.cfg.conCharcuteria=true;
+  }
+  for(const g of S.cfg.abonos){ if(!Array.isArray(g.facturas)||!g.facturas.length) g.facturas=[nuevaFactura()]; if(!Array.isArray(g.alias)) g.alias=[norm(g.nombre)]; if(!g.cuenta||!S.cfg.cuentas.some(c=>c.nombre===g.cuenta)) g.cuenta=S.cfg.cuentas[0]?S.cfg.cuentas[0].nombre:'Personal'; }
+  sincronizarCuentasAbono();
+}
+// Pone al día el negocio guardado en cada movimiento de abono, para que coincida con el negocio
+// que tiene asignado ahora su proveedor/persona (por si lo cambió después de guardarlos).
+function sincronizarCuentasAbono(){
+  if(!Array.isArray(S.movs)) return;
+  const porGrupo=new Map(S.cfg.abonos.map(g=>[g.nombre,g.cuenta]));
+  for(const m of S.movs){ if(m.tipo==='abono'&&porGrupo.has(m.grupo)&&m.cuenta!==porGrupo.get(m.grupo)) m.cuenta=porGrupo.get(m.grupo); }
+}
 
 function lsLeer(){ try{ const t=localStorage.getItem(LS_KEY); return t?JSON.parse(t):null; }catch(e){ return null; } }
 function lsGuardar(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({movs:S.movs,cfg:S.cfg})); }catch(e){} }
@@ -601,20 +679,56 @@ async function iniciarNube(){
     return true;
   }catch(e){ S.modo='local'; S.perfil=null; S.movsCol=null; return false; }
 }
+/* ---- Supabase (cuando la app está en Render) ---- */
+const SB_KEY='adminVoz.sb'; let sb=null, sbUser=null;
+function sbCfgLeer(){ try{ return JSON.parse(localStorage.getItem(SB_KEY)||'null'); }catch(e){ return null; } }
+function sbCfgGuardar(c){ try{ if(c) localStorage.setItem(SB_KEY,JSON.stringify(c)); else localStorage.removeItem(SB_KEY); }catch(e){} }
+function sbCliente(){ const c=sbCfgLeer(); if(!c||!window.supabase||!window.supabase.createClient) return null; try{ return window.supabase.createClient(c.url,c.key); }catch(e){ return null; } }
+async function iniciarSupabase(){
+  sb=sbCliente(); if(!sb) return false;
+  try{ const {data}=await sb.auth.getSession(); if(!data||!data.session) return false; sbUser=data.session.user; }catch(e){ return false; }
+  return await sbSincronizar();
+}
+async function sbSincronizar(){
+  try{
+    const r1=await sb.from('av_movimientos').select('id,datos'); if(r1.error) throw r1.error;
+    const r2=await sb.from('av_config').select('datos').maybeSingle(); if(r2.error) throw r2.error;
+    const nube=(r1.data||[]).map(r=>({...r.datos,id:r.id}));
+    const ids=new Set(nube.map(m=>m.id));
+    const soloLocal=S.movs.filter(m=>!ids.has(m.id));
+    if(r2.data&&r2.data.datos){ S.cfg=r2.data.datos; asegurarCfg(); }
+    else { const r=await sb.from('av_config').upsert({user_id:sbUser.id,datos:S.cfg}); if(r.error) throw r.error; }
+    if(soloLocal.length){ const r=await sb.from('av_movimientos').upsert(soloLocal.map(m=>({user_id:sbUser.id,id:m.id,datos:m})),{onConflict:'user_id,id'}); if(r.error) throw r.error; }
+    S.movs=nube.concat(soloLocal); S.modo='supabase'; lsGuardar(); return true;
+  }catch(e){ console.log('Supabase:',e); S.modo='local'; aviso('No se pudo conectar a la nube: '+(e.message||'revise internet')); return false; }
+}
+function sbFallo(err){ console.log('Supabase:',err); aviso('Sin internet: quedó guardado en el celular y se sube al abrir la app con internet.'); }
+function pintarNube(){
+  const c=sbCfgLeer(); const enClaude=S.modo==='nube';
+  $('nubeCaja').classList.toggle('oculto',enClaude);
+  $('nubeSinConfig').classList.toggle('oculto',!!c);
+  $('nubeLogin').classList.toggle('oculto',!c||S.modo==='supabase');
+  $('nubeOk').classList.toggle('oculto',S.modo!=='supabase');
+  if(sbUser) $('sbQuien').textContent=sbUser.email||'';
+}
+
 async function nubeGuardarMov(m){ const c={...m}; delete c.id; await S.movsCol.doc(m.id).set(c); }
 
 async function guardarMov(m){
   S.movs.push(m); lsGuardar();
   if(S.modo==='nube'){ try{ await nubeGuardarMov(m); }catch(e){ pasarALocal(); } }
+  else if(S.modo==='supabase'){ const r=await sb.from('av_movimientos').upsert({user_id:sbUser.id,id:m.id,datos:m},{onConflict:'user_id,id'}).catch(e=>({error:e})); if(r.error) sbFallo(r.error); }
 }
 async function borrarMov(id){
   S.movs=S.movs.filter(m=>m.id!==id); lsGuardar();
   if(S.modo==='nube'){ try{ await S.movsCol.doc(id).delete(); }catch(e){ pasarALocal(); } }
+  else if(S.modo==='supabase'){ const r=await sb.from('av_movimientos').delete().eq('id',id).catch(e=>({error:e})); if(r.error) sbFallo(r.error); }
 }
 let guardandoCfg=Promise.resolve();
 function guardarCfg(){
   lsGuardar();
   if(S.modo==='nube'){ guardandoCfg=guardandoCfg.then(()=>S.perfil.set({cfg:S.cfg})).catch(()=>pasarALocal()); }
+  else if(S.modo==='supabase'){ guardandoCfg=guardandoCfg.then(async()=>{ const r=await sb.from('av_config').upsert({user_id:sbUser.id,datos:S.cfg}); if(r.error) sbFallo(r.error); }).catch(sbFallo); }
 }
 function pasarALocal(){ S.modo='local'; pintarEstado(); aviso('Sin conexión a la nube: se guarda solo en este celular.'); }
 function nuevoId(){ return 'm'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -627,7 +741,7 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;',
 function aviso(t){ const a=$('aviso'); a.textContent=t; a.classList.add('ver'); clearTimeout(aviso._t); aviso._t=setTimeout(()=>a.classList.remove('ver'),2600); }
 function preguntar(txt){ return new Promise(res=>{ $('modalTxt').textContent=txt; $('modal').classList.add('ver'); $('modalSi').onclick=()=>{ $('modal').classList.remove('ver'); res(true); }; $('modalNo').onclick=()=>{ $('modal').classList.remove('ver'); res(false); }; }); }
 function hablar(t){ if(!S.cfg.voz||!t) return; try{ const u=new SpeechSynthesisUtterance(t); u.lang='es-ES'; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} }
-function pintarEstado(){ $('estado').textContent = S.modo==='nube' ? '☁️ Guardado en su cuenta: lo ve desde cualquier celular donde abra esta app.' : '📱 Guardado en este celular. Haga copias de seguridad en Ajustes.'; }
+function pintarEstado(){ $('estado').textContent = S.modo==='nube' ? '☁️ Guardado en su cuenta: lo ve desde cualquier celular donde abra esta app.' : S.modo==='supabase' ? '☁️ Guardado en la nube ('+(sbUser&&sbUser.email||'')+')' : '📱 Guardado en este celular. Para guardar en la nube vaya a Ajustes.'; }
 
 const EJEMPLOS=['abono de cerveza 500.000 por Nequi','¿cuánto llevan de abonos de cerveza?','me gasté 10.000 del negocio Top Star','me gané 50.000 en Top Star','gasté 20.000 de la licorería','entraron 50.000 en la licorería','gasté 10.000 en pasteles','le di 50.000 a Leo para compra de pan','¿qué le di a Leo?','¿cómo voy este mes?'];
 
@@ -664,7 +778,11 @@ function pintarConfirma(){
         <option value="abono" ${r.tipo==='abono'?'selected':''}>💵 Abono de factura</option>
         <option value="nota" ${r.tipo==='nota'?'selected':''}>📝 Nota / recuerdo</option></select></div>
       <div class="soloNormal"><label>Casilla</label><select id="cCuenta">${opC}</select></div>
+      <div class="soloNormal"><label>Categoría</label><select id="cCategoria"></select></div>
       <div class="soloAbono"><label>Factura de</label><select id="cGrupo">${opG}</select></div>
+      <div class="soloAbono"><label>¿Quién paga?</label><select id="cSentido">
+        <option value="recibo" ${r.sentido!=='doy'?'selected':''}>🟢 Me pagan a mí</option>
+        <option value="doy" ${r.sentido==='doy'?'selected':''}>🔴 Yo pago</option></select></div>
       <div><label>Monto</label><input id="cMonto" inputmode="numeric" value="${r.monto?Math.round(r.monto).toLocaleString('es-CO'):''}"></div>
       <div><label>Fecha</label><input id="cFecha" type="date" value="${fecha}"></div>
       <div class="soloAbono"><label>¿Cómo lo trajeron?</label><select id="cMedio">${opM}</select></div>
@@ -673,7 +791,16 @@ function pintarConfirma(){
     </div>
     <div class="fila-btn"><button class="btn sec" id="cNo">Cancelar</button><button class="btn verde" id="cSi">Guardar ✓</button></div>
   </div>`;
-  const ver=()=>{ const ab=$('cTipo').value==='abono'; document.querySelectorAll('.soloAbono').forEach(e=>e.classList.toggle('oculto',!ab)); document.querySelectorAll('.soloNormal').forEach(e=>e.classList.toggle('oculto',ab)); };
+  const ver=()=>{
+    const tp=$('cTipo').value, ab=tp==='abono';
+    document.querySelectorAll('.soloAbono').forEach(e=>e.classList.toggle('oculto',!ab));
+    document.querySelectorAll('.soloNormal').forEach(e=>e.classList.toggle('oculto',ab));
+    if(!ab && $('cCategoria')){
+      const opts = tp==='salida' ? [['gasto','Gasto'],['inversion','Inversión / reinversión'],['retiro','Retiro de ganancia (para usted)']] : tp==='entrada' ? [['venta','Venta'],['otro','Otra entrada']] : [['otro','—']];
+      const act = r.categoria && opts.some(o=>o[0]===r.categoria) ? r.categoria : opts[0][0];
+      $('cCategoria').innerHTML = opts.map(([v,t])=>`<option value="${v}" ${v===act?'selected':''}>${t}</option>`).join('');
+    }
+  };
   $('cTipo').onchange=ver; ver();
   $('cNo').onclick=()=>{ pendiente=null; pintarConfirma(); };
   $('cSi').onclick=async()=>{
@@ -686,15 +813,20 @@ function pintarConfirma(){
     if(tipo==='abono'){
       const g=S.cfg.abonos.find(x=>x.nombre===$('cGrupo').value);
       if(!g){ aviso('Primero agregue un proveedor en Abonos'); return; }
-      m={id:pendiente.id,tipo,monto,cuenta:'Abonos',grupo:g.nombre,facturaId:facturaActual(g).id,medio:$('cMedio').value,persona:$('cPersona').value.trim(),concepto:$('cConcepto').value.trim()||('Abono '+g.nombre),fecha,texto:pendiente.texto};
+      m={id:pendiente.id,tipo,monto,cuenta:g.cuenta||'Personal',grupo:g.nombre,facturaId:facturaActual(g).id,medio:$('cMedio').value,sentido:$('cSentido').value,persona:$('cPersona').value.trim(),concepto:$('cConcepto').value.trim()||('Abono '+g.nombre),fecha,texto:pendiente.texto};
     } else {
-      m={id:pendiente.id,tipo,monto:tipo==='nota'?0:monto,cuenta:$('cCuenta').value,persona:$('cPersona').value.trim(),concepto:$('cConcepto').value.trim()||(tipo==='nota'?pendiente.texto:'Movimiento'),fecha,texto:pendiente.texto};
+      m={id:pendiente.id,tipo,monto:tipo==='nota'?0:monto,cuenta:$('cCuenta').value,categoria:tipo==='nota'?undefined:$('cCategoria').value,persona:$('cPersona').value.trim(),concepto:$('cConcepto').value.trim()||(tipo==='nota'?pendiente.texto:'Movimiento'),fecha,texto:pendiente.texto};
     }
     pendiente=null; pintarConfirma(); $('frase').value='';
     await guardarMov(m);
     let msg, voz;
     if(tipo==='nota'){ msg=voz='Nota guardada'; }
-    else if(tipo==='abono'){ const r2=resumenFactura(S.cfg.abonos.find(x=>x.nombre===m.grupo),S.movs); msg=`Abono de ${pesos(m.monto)} a ${m.grupo}. Total abonado: ${pesos(r2.total)}`; voz=`Abono de ${m.monto} pesos a ${m.grupo}. Llevan ${r2.total} pesos`; }
+    else if(tipo==='abono'){
+      const r2=resumenFactura(S.cfg.abonos.find(x=>x.nombre===m.grupo),S.movs);
+      const dir=m.sentido==='doy'?`Usted le pagó ${pesos(m.monto)} a ${m.grupo}`:`${m.grupo} le abonó ${pesos(m.monto)} a usted`;
+      msg=`${dir}. Le han abonado en total ${pesos(r2.total)}`+(r2.totalDoy?`, usted ha pagado en total ${pesos(r2.totalDoy)}`:'');
+      voz=m.sentido==='doy'?`Usted pagó ${m.monto} pesos a ${m.grupo}`:`${m.grupo} le abonó ${m.monto} pesos`;
+    }
     else { msg=`${tipo==='entrada'?'Entrada':'Salida'} de ${pesos(m.monto)} en ${m.cuenta}`; voz=`Anotado: ${tipo==='entrada'?'entrada':'salida'} de ${m.monto} pesos en ${m.cuenta}`; }
     aviso('✓ '+msg); hablar(voz);
     pintarTodo();
@@ -702,10 +834,11 @@ function pintarConfirma(){
 }
 
 function filaMov(m,borrable){
-  const signo=m.tipo==='entrada'?'+':m.tipo==='salida'?'−':m.tipo==='abono'?'$':'✎';
-  const t2=(m.tipo==='abono'?[fechaCorta(m.fecha),'Abono '+m.grupo,m.medio,m.persona]:[fechaCorta(m.fecha),m.cuenta,m.persona]).filter(Boolean).join(' · ');
+  const signo=m.tipo==='entrada'?'+':m.tipo==='salida'?'−':m.tipo==='abono'?(m.sentido==='doy'?'🔴':'🟢'):'✎';
+  const t2=(m.tipo==='abono'?[fechaCorta(m.fecha),(m.sentido==='doy'?'Usted pagó a ':'Le abonó ')+m.grupo,m.medio,m.persona]:[fechaCorta(m.fecha),m.cuenta,m.persona]).filter(Boolean).join(' · ');
+  const esNeg=m.tipo==='salida'||(m.tipo==='abono'&&m.sentido==='doy');
   return `<div class="mov"><div class="ic ${m.tipo}">${signo}</div><div class="tx"><div class="t1">${esc(m.concepto)}</div><div class="t2">${esc(t2)}</div></div>
-    ${m.tipo!=='nota'?`<div class="monto ${m.tipo==='salida'?'neg':'pos'}">${m.tipo==='salida'?'−':'+'}${pesos(m.monto).slice(1)}</div>`:''}
+    ${m.tipo!=='nota'?`<div class="monto ${esNeg?'neg':'pos'}">${esNeg?'−':'+'}${pesos(m.monto).slice(1)}</div>`:''}
     ${borrable?`<button class="x" data-borrar="${m.id}" title="Borrar">✕</button>`:''}</div>`;
 }
 function ordenados(){ return [...S.movs].sort((a,b)=>a.fecha<b.fecha?1:-1); }
@@ -715,11 +848,33 @@ function pintarInicio(){
   const delMes=S.movs.filter(m=>new Date(m.fecha)>=ini);
   $('resumenCuentas').innerHTML=S.cfg.cuentas.map(c=>{
     const ms=delMes.filter(m=>m.cuenta===c.nombre);
-    const e=ms.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+m.monto,0), s=ms.filter(m=>m.tipo==='salida').reduce((s,m)=>s+m.monto,0), g=e-s;
-    return `<div class="card cuenta"><h4>${esc(c.nombre)}</h4>
+    const venta=ms.filter(m=>m.tipo==='entrada'&&m.categoria==='venta').reduce((s,m)=>s+m.monto,0);
+    const otraEnt=ms.filter(m=>m.tipo==='entrada'&&m.categoria!=='venta').reduce((s,m)=>s+m.monto,0);
+    const inversion=ms.filter(m=>m.tipo==='salida'&&m.categoria==='inversion').reduce((s,m)=>s+m.monto,0);
+    const gasto=ms.filter(m=>m.tipo==='salida'&&m.categoria==='gasto').reduce((s,m)=>s+m.monto,0);
+    const retiro=ms.filter(m=>m.tipo==='salida'&&m.categoria==='retiro').reduce((s,m)=>s+m.monto,0);
+    // Las cuentas por cobrar/pagar de Abonos se ven aparte, por cada proveedor o persona,
+    // usando la misma cuenta que ya se ve en la pestaña Abonos (no se suman en bloque aquí).
+    const gruposNeg = S.cfg.abonos.filter(g=>g.cuenta===c.nombre);
+    const abonosDet = gruposNeg.map(g=>{ const r=resumenFactura(g,S.movs); const k=cuentasFactura(r); return {g,r,k}; });
+    const abonoGanTotal = abonosDet.reduce((s,x)=>s+(x.k.ganHoy||0),0);
+    const e=venta+otraEnt, sCaja=inversion+gasto+retiro, g=e-(inversion+gasto);
+    return `<div class="card cuenta" data-resumen="${esc(c.nombre)}" style="cursor:pointer">
+      <h4>${esc(c.nombre)} <span class="tip" style="float:right">Ver resumen ▾</span></h4>
       <div class="linea"><span>Entradas</span><span class="pos">${pesos(e)}</span></div>
-      <div class="linea"><span>Salidas</span><span class="neg">${pesos(s)}</span></div>
-      <div class="linea total"><span>${g>=0?'Ganancia':'Pérdida'}</span><span class="${g>=0?'pos':'neg'}">${pesos(Math.abs(g))}</span></div></div>`;
+      <div class="linea"><span>Salidas</span><span class="neg">${pesos(sCaja)}</span></div>
+      <div class="linea"><span>Inversión</span><span class="neg">${pesos(inversion)}</span></div>
+      <div class="linea total"><span>${g>=0?'Ganancia del negocio':'Pérdida'}</span><span class="${g>=0?'pos':'neg'}">${pesos(Math.abs(g))}</span></div>
+      ${retiro?`<div class="linea"><span>Ya retiró de esa ganancia</span><span class="neg">${pesos(retiro)}</span></div><div class="linea"><span>Le queda en el negocio</span><span class="pos">${pesos(g-retiro)}</span></div>`:''}
+      ${abonosDet.length?`<div class="linea"><span>Abonos (ganancia acumulada)</span><span class="${abonoGanTotal>=0?'pos':'neg'}">${pesos(abonoGanTotal)}</span></div>`:''}
+      <div class="oculto" id="det-${esc(c.nombre)}" style="margin-top:8px;border-top:1px dashed var(--borde);padding-top:8px">
+        <div class="linea"><span>Ventas (este mes)</span><span class="pos">${pesos(venta)}</span></div>
+        <div class="linea"><span>Otras entradas (este mes)</span><span class="pos">${pesos(otraEnt)}</span></div>
+        <div class="linea"><span>Inversión (este mes)</span><span class="neg">${pesos(inversion)}</span></div>
+        <div class="linea"><span>Gastos (este mes)</span><span class="neg">${pesos(gasto)}</span></div>
+        <div class="linea"><span>Retiro de ganancia (este mes)</span><span class="neg">${pesos(retiro)}</span></div>
+        ${abonosDet.length?`<div class="tip" style="margin-top:6px">Por proveedor / persona (Abonos):</div>${abonosDet.map(x=>`<div class="linea"><span>${esc(x.g.nombre)}</span><span class="${(x.k.ganHoy||0)>=0?'pos':'neg'}">${x.k.ganHoy===0?'Todo cuadrado ✓':x.k.ganHoy!==null?(x.k.ganHoy>=0?pesos(x.k.ganHoy):(x.r.f.valor?'falta '+pesos(-x.k.ganHoy):'debe '+pesos(-x.k.ganHoy))):'sin costo puesto'}${x.k.debe?' · debe '+pesos(x.k.debe):''}</span></div>`).join('')}`:''}
+      </div></div>`;
   }).join('');
   const ult=ordenados().slice(0,6);
   $('ultimos').innerHTML= ult.length ? ult.map(m=>filaMov(m,true)).join('') : '<div class="vacio">Todavía no hay nada. Diga su primer movimiento arriba 👆</div>';
@@ -741,7 +896,9 @@ function pintarStats(){
   const d=new Date(); const meses=[];
   for(let i=5;i>=0;i--){ const a=new Date(d.getFullYear(),d.getMonth()-i,1), b=new Date(d.getFullYear(),d.getMonth()-i+1,1);
     const ms=S.movs.filter(m=>(sCuenta==='Todas'||m.cuenta===sCuenta)&&new Date(m.fecha)>=a&&new Date(m.fecha)<b);
-    meses.push({nom:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][a.getMonth()],e:ms.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+m.monto,0),s:ms.filter(m=>m.tipo==='salida').reduce((s,m)=>s+m.monto,0)}); }
+    const e=ms.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+m.monto,0);
+    const s=ms.filter(m=>m.tipo==='salida').reduce((s,m)=>s+m.monto,0);
+    meses.push({nom:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][a.getMonth()],e,s}); }
   const max=Math.max(1,...meses.map(m=>Math.max(m.e,m.s)));
   $('barras').innerHTML=meses.map(m=>`<div class="mes"><div class="par"><div class="bar e" style="height:${m.e/max*100}%" title="Entradas ${pesos(m.e)}"></div><div class="bar s" style="height:${m.s/max*100}%" title="Salidas ${pesos(m.s)}"></div></div></div>`).join('');
   $('etqBarras').innerHTML=meses.map(m=>`<div>${m.nom}</div>`).join('');
@@ -756,8 +913,9 @@ let grupoSel=null;
 function textoWhatsApp(g,f){
   const r=resumenFactura(g,S.movs,f);
   let t=`*Abonos de ${g.nombre}*\nFactura: ${fechaLarga(r.f.desde)}\n\n`;
-  t+=r.lista.map(m=>`${fechaLarga(m.fecha)}  ${m.medio||''}${m.persona?' ('+m.persona+')':''}  ${pesos(m.monto)}`).join('\n')||'(sin abonos)';
-  t+=`\n\n*TOTAL ABONADO: ${pesos(r.total)}*`;
+  t+=r.lista.map(m=>`${fechaLarga(m.fecha)}  ${m.sentido==='doy'?'🔴 Yo pagué':'🟢 Me pagaron'}  ${m.medio||''}${m.persona?' ('+m.persona+')':''}  ${pesos(m.monto)}`).join('\n')||'(sin abonos)';
+  t+=`\n\n*LE HAN ABONADO: ${pesos(r.total)}*`;
+  if(r.totalDoy) t+=`\n*USTED HA PAGADO: ${pesos(r.totalDoy)}*`;
   const k=cuentasFactura(r);
   if(r.f.valor) t+=`\nValor de la factura: ${pesos(r.f.valor)}\n*Quedan debiendo: ${pesos(k.debe)}*`;
   return t;
@@ -765,13 +923,16 @@ function textoWhatsApp(g,f){
 function tarjetaFactura(g,f,actual){
   const r=resumenFactura(g,S.movs,f); const k=cuentasFactura(r);
   const pct=r.f.valor?Math.min(100,r.total/r.f.valor*100):0;
-  const filas=r.lista.map(m=>`<tr><td>${fechaLarga(m.fecha)}</td><td style="text-align:left">${esc(m.medio||'')}${m.persona?' · '+esc(m.persona):''}</td><td class="pos">${pesos(m.monto)}</td><td style="width:28px"><button class="x" data-borrar="${m.id}" title="Borrar">✕</button></td></tr>`).join('');
+  const filas=r.lista.map(m=>`<tr><td>${fechaLarga(m.fecha)}</td><td style="text-align:left">${m.sentido==='doy'?'🔴 Yo pagué':'🟢 Me pagaron'} · ${esc(m.medio||'')}${m.persona?' · '+esc(m.persona):''}</td><td class="${m.sentido==='doy'?'neg':'pos'}">${pesos(m.monto)}</td><td style="width:28px"><button class="x" data-borrar="${m.id}" title="Borrar">✕</button></td></tr>`).join('');
   let cuadro='';
-  if(r.f.costo) cuadro+=`<div class="linea"><span>Lo que usted pagó</span><span class="neg">${pesos(r.f.costo)}</span></div>`;
+  if(r.f.costo) cuadro+=`<div class="linea"><span>Lo que usted pagó de entrada</span><span class="neg">${pesos(r.f.costo)}</span></div>`;
+  if(r.totalDoy) cuadro+=`<div class="linea"><span>🔴 Lo que usted ha abonado</span><span class="neg">${pesos(r.totalDoy)}</span></div>`;
+  if(r.f.costo||r.totalDoy) cuadro+=`<div class="linea"><span>Total pagado por usted</span><span class="neg">${pesos(k.costoEf)}</span></div>`;
   if(r.f.valor) cuadro+=`<div class="linea"><span>Lo que vale (le deben pagar)</span><span>${pesos(r.f.valor)}</span></div>`;
-  cuadro+=`<div class="linea"><span>Le han abonado</span><span class="pos">${pesos(r.total)}</span></div>`;
+  cuadro+=`<div class="linea"><span>🟢 Le han abonado a usted</span><span class="pos">${pesos(r.total)}</span></div>`;
   if(r.f.valor) cuadro+=`<div class="linea total"><span>Le quedan debiendo</span><span class="${k.debe?'neg':'pos'}">${k.debe?pesos(k.debe):'Nada ✓'}</span></div>`;
-  if(k.ganHoy!==null) cuadro+=`<div class="linea total"><span>${k.ganHoy>=0?'Ganancia hasta hoy':'Falta para recuperar lo invertido'}</span><span class="${k.ganHoy>=0?'pos':'neg'}">${pesos(Math.abs(k.ganHoy))}</span></div>`;
+  if(k.ganHoy===0) cuadro+=`<div class="linea total"><span>Todo cuadrado ✓</span><span class="pos">$0</span></div>`;
+  else if(k.ganHoy!==null) cuadro+=`<div class="linea total"><span>${k.ganHoy>=0?'Ganancia hasta hoy':(r.f.valor?'Falta para recuperar lo invertido':'Le debe a usted (deuda)')}</span><span class="${k.ganHoy>=0?'pos':'neg'}">${pesos(Math.abs(k.ganHoy))}</span></div>`;
   if(k.ganFinal!==null&&k.debe) cuadro+=`<div class="linea"><span>Ganancia cuando terminen de pagar</span><span class="pos">${pesos(k.ganFinal)}</span></div>`;
   return `<div class="card">
     <div class="linea"><span>Factura del <b>${fechaLarga(r.f.desde)}</b></span><span>${r.lista.length} abono${r.lista.length===1?'':'s'}</span></div>
@@ -798,7 +959,8 @@ function pintarAbonos(){
   if(!$('nfFecha').value) $('nfFecha').value=new Date().toISOString().slice(0,10);
   const viejas=g?g.facturas.slice(0,-1).reverse():[];
   $('abonoViejas').innerHTML=viejas.length?`<h2>Facturas anteriores de ${esc(g.nombre)}</h2><div class="card">${viejas.map(f=>{const r=resumenFactura(g,S.movs,f);return `<details class="vieja"><summary>${fechaLarga(f.desde)} — abonado ${pesos(r.total)}${f.valor?' de '+pesos(f.valor):''}${(f.costo&&r.total)?' · ganancia '+pesos(r.total-f.costo):''}</summary>${tarjetaFactura(g,f,false)}</details>`;}).join('')}</div>`:'';
-  $('listaGrupos').innerHTML=gs.map((x,i)=>`<div class="mov"><div class="tx"><div class="t1">${esc(x.nombre)}</div><div class="t2">Se reconoce como: ${esc(x.alias.join(', '))}</div></div><button class="x" data-quitarg="${i}" title="Quitar">✕</button></div>`).join('')||'<div class="vacio">No hay proveedores.</div>';
+  $('listaGrupos').innerHTML=gs.map((x,i)=>`<div class="mov"><div class="tx"><div class="t1">${esc(x.nombre)} <span class="tip">(${esc(x.cuenta||'Personal')})</span></div><div class="t2">Se reconoce como: ${esc(x.alias.join(', '))}</div></div><select data-grupocuenta="${i}" style="width:auto">${S.cfg.cuentas.map(c=>`<option ${c.nombre===x.cuenta?'selected':''}>${esc(c.nombre)}</option>`).join('')}</select><button class="x" data-quitarg="${i}" title="Quitar">✕</button></div>`).join('')||'<div class="vacio">No hay proveedores.</div>';
+  if($('nuevoGrupoCuenta')) $('nuevoGrupoCuenta').innerHTML=S.cfg.cuentas.map(c=>`<option>${esc(c.nombre)}</option>`).join('');
 }
 
 let personaSel=null;
@@ -815,7 +977,7 @@ function pintarAjustes(){
   $('optVoz').checked=!!S.cfg.voz;
 }
 
-function pintarTodo(){ pintarEstado(); pintarInicio(); pintarMovs(); pintarAbonos(); pintarStats(); pintarPersonas(); pintarAjustes(); }
+function pintarTodo(){ pintarEstado(); pintarNube(); pintarInicio(); pintarMovs(); pintarAbonos(); pintarStats(); pintarPersonas(); pintarAjustes(); }
 
 /* ---------- eventos ---------- */
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
@@ -829,7 +991,8 @@ $('ejemplos').innerHTML=EJEMPLOS.map(t=>`<button>${esc(t)}</button>`).join('');
 $('ejemplos').onclick=e=>{ if(e.target.tagName==='BUTTON'){ $('frase').value=e.target.textContent; procesar(); } };
 $('buscar').oninput=pintarMovs;
 document.body.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-borrar],[data-fc],[data-ft],[data-sc],[data-per],[data-quitarc],[data-grupo],[data-copiarfact],[data-quitarg]'); if(!t) return;
+  const t=e.target.closest('[data-borrar],[data-fc],[data-ft],[data-sc],[data-per],[data-quitarc],[data-grupo],[data-copiarfact],[data-quitarg],[data-resumen]'); if(!t) return;
+  if(t.dataset.resumen){ const det=$('det-'+t.dataset.resumen); if(det) det.classList.toggle('oculto'); return; }
   if(t.dataset.grupo){ grupoSel=t.dataset.grupo; pintarAbonos(); return; }
   if(t.dataset.copiarfact){ const [gn,fid]=t.dataset.copiarfact.split('|'); const g=S.cfg.abonos.find(x=>x.nombre===gn); const f=g&&g.facturas.find(x=>x.id===fid); if(!f) return;
     const txt=textoWhatsApp(g,f); try{ await navigator.clipboard.writeText(txt); aviso('Copiado ✓ Péguelo en WhatsApp'); }catch(err){ $('respaldoTxt').value=txt; aviso('No se pudo copiar automáticamente'); } return; }
@@ -859,8 +1022,46 @@ $('nfCrear').onclick=async()=>{
 $('agregarGrupo').onclick=()=>{
   const nom=$('nuevoGrupo').value.trim(); if(!nom){ aviso('Escriba el nombre'); return; }
   if(S.cfg.abonos.some(g=>norm(g.nombre)===norm(nom))){ aviso('Ese proveedor ya existe'); return; }
-  S.cfg.abonos.push({nombre:nom,alias:[norm(nom),...$('nuevoGrupoAlias').value.split(',').map(a=>norm(a.trim())).filter(Boolean)],facturas:[nuevaFactura()]});
-  grupoSel=nom; guardarCfg(); $('nuevoGrupo').value=''; $('nuevoGrupoAlias').value=''; pintarTodo(); aviso('Proveedor agregado');
+  S.cfg.abonos.push({nombre:nom,alias:[norm(nom),...$('nuevoGrupoAlias').value.split(',').map(a=>norm(a.trim())).filter(Boolean)],cuenta:$('nuevoGrupoCuenta').value||S.cfg.cuentas[0].nombre,facturas:[nuevaFactura()]});
+  grupoSel=nom; guardarCfg(); $('nuevoGrupo').value=''; $('nuevoGrupoAlias').value=''; pintarTodo(); aviso('Cuenta agregada');
+};
+document.body.addEventListener('change',e=>{
+  const sel=e.target.closest('[data-grupocuenta]'); if(!sel) return;
+  const g=S.cfg.abonos[+sel.dataset.grupocuenta]; if(!g) return;
+  g.cuenta=sel.value; guardarCfg(); aviso('Negocio actualizado');
+});
+$('sbConectar').onclick=()=>{
+  const url=$('sbUrl').value.trim().replace(/\/+$/,''), key=$('sbKey').value.trim();
+  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)){ aviso('La URL debe ser como https://xxxx.supabase.co'); return; }
+  if(key.length<30){ aviso('Revise la clave: es un texto largo que empieza por eyJ…'); return; }
+  if(!window.supabase){ aviso('No cargó Supabase. Revise el internet y recargue.'); return; }
+  sbCfgGuardar({url,key}); sb=sbCliente(); pintarNube(); aviso('Listo. Ahora entre con su correo.');
+};
+$('sbOlvidarCfg').onclick=()=>{ sbCfgGuardar(null); sb=null; pintarNube(); };
+async function sbDespuesDeEntrar(session){
+  sbUser=session.user;
+  if(await sbSincronizar()){ pintarTodo(); aviso('☁️ Conectado. Sus datos ya están en la nube.'); }
+}
+$('sbEntrar').onclick=async()=>{
+  sb=sb||sbCliente(); if(!sb) return;
+  const {data,error}=await sb.auth.signInWithPassword({email:$('sbCorreo').value.trim(),password:$('sbClave').value});
+  if(error){ aviso(/confirm/i.test(error.message)?'Primero confirme el correo que le llegó':'Correo o contraseña incorrectos'); return; }
+  $('sbClave').value=''; await sbDespuesDeEntrar(data.session);
+};
+$('sbCrear').onclick=async()=>{
+  sb=sb||sbCliente(); if(!sb) return;
+  const email=$('sbCorreo').value.trim(), password=$('sbClave').value;
+  if(!email||password.length<6){ aviso('Escriba correo y una contraseña de 6 o más'); return; }
+  const {data,error}=await sb.auth.signUp({email,password});
+  if(error){ aviso('No se pudo crear: '+error.message); return; }
+  if(data.session){ $('sbClave').value=''; await sbDespuesDeEntrar(data.session); }
+  else aviso('Cuenta creada. Revise su correo para confirmarla y luego toque Entrar.');
+};
+$('sbSync').onclick=async()=>{ if(await sbSincronizar()){ pintarTodo(); aviso('Actualizado ✓'); } };
+$('sbSalir').onclick=async()=>{
+  if(!await preguntar('¿Cerrar sesión? Los datos siguen guardados en la nube.')) return;
+  try{ await sb.auth.signOut(); }catch(e){}
+  sbUser=null; S.modo='local'; S.movs=[]; lsGuardar(); pintarTodo(); aviso('Sesión cerrada');
 };
 $('optVoz').onchange=()=>{ S.cfg.voz=$('optVoz').checked; guardarCfg(); };
 $('copiarRespaldo').onclick=async()=>{
@@ -911,6 +1112,8 @@ $('borrarTodo').onclick=async()=>{
   pintarTodo();
   await new Promise(r=>setTimeout(r,0));
   if(await iniciarNube()) pintarTodo();
+  else if(await iniciarSupabase()) pintarTodo();
+  else pintarNube();
 })();
 </script>
 </body>
