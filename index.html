@@ -119,6 +119,8 @@ textarea.json{width:100%;min-height:90px;font-family:monospace;font-size:12px;bo
     <div id="zonaConfirma"></div>
     <div id="zonaRespuesta"></div>
 
+    <div id="zonaPendientes"></div>
+
     <h2>Este mes</h2>
     <div class="cuentas" id="resumenCuentas"></div>
 
@@ -270,7 +272,8 @@ const CUENTAS_INICIALES = [
   {nombre:'Licorería', alias:['licoreria','licorera','licor','la licore']},
   {nombre:'Coca-Cola', alias:['coca cola','cocacola','coca-cola']},
   {nombre:'Charcutería', alias:['charcuteria','carniceria','la charcuteria','la carniceria']},
-  {nombre:'Personal', alias:['personal','personales','mis gastos','para mi','mi casa','la casa']}
+  {nombre:'Personal', alias:['personal','personales','mis gastos','para mi','mi casa','la casa']},
+  {nombre:'Recordatorios', alias:['recordatorio','recordatorios','encargo','encargos','mandado','mandados','favor','favores','notas']}
 ];
 
 function nuevaFactura(desde,valor,costo){ return {id:'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,5), desde:desde||new Date().toISOString(), valor:valor||0, costo:costo||0}; }
@@ -291,10 +294,17 @@ const SENT_RECIBO=/\bme\s+\w*\s*(abon|pag|dio|dieron|trajo|trajeron|deposito|dep
 const SENT_DOY=/\b(le|les)\s+\w*\s*(abon|pag|di\b|dimos|entregue|entregamos|cancel)\b|\b(pague|pagamos|abone|abonamos|di|dimos|entregue|entregamos|cancele|cancelamos|invert[ií]|invertimos|invirtieron|reinvert[ií]|reinvertimos)\b/;
 const CAT_INVERSION=/\b(invert[ií]|inversion|inversiones|reinvert[ií]|reinversion)\b/;
 const CAT_VENTA=/\b(venta|ventas|vendi|vendimos|vendieron|vendio)\b/;
-const CAT_RETIRO=/\b(retire|retiro|retiramos|retiraron|me lleve|saque para mi|sac[óo] para (el|su) (gasto|personal)|saque la ganancia)\b/;
-function detectarSentido(n,grupoTipo){
-  if(SENT_RECIBO.test(n)) return 'recibo';
-  if(SENT_DOY.test(n)) return 'doy';
+const CAT_RETIRO=/\b(retire|retiro|retiramos|retiraron|me lleve|saque para mi|sac[óo] para (el|su) (gasto|personal)|saque la ganancia|(saque|retire)\s+(de\s+)?(la\s+)?(caja|ganancia|ganancias|negocio))\b/;
+function detectarSentido(n,grupoTipo,montoIni){
+  const mR=SENT_RECIBO.exec(n), mD=SENT_DOY.exec(n);
+  if(mR&&mD){
+    // La frase tiene las dos direcciones a la vez (ej: "me trajo la mercancia y le pague 150.000 que hizo falta").
+    // El monto es de quien quede más cerca de él en el texto.
+    if(typeof montoIni==='number') return Math.abs(mD.index-montoIni)<=Math.abs(mR.index-montoIni)?'doy':'recibo';
+    return 'doy';
+  }
+  if(mR) return 'recibo';
+  if(mD) return 'doy';
   return grupoTipo==='doy'?'doy':'recibo';
 }
 
@@ -483,7 +493,7 @@ function interpretar(texto,cuentas,conocidas,ahora,grupos){
     const gFull = (grupos||[]).find(x=>x.nombre===nombreGrp);
     return {pregunta:false,tipo,monto:monto?monto.monto:0,cuenta:(gFull&&gFull.cuenta)||'Personal',
       grupo: nombreGrp,
-      medio: med?med.medio:'Efectivo', sentido: detectarSentido(n),
+      medio: med?med.medio:'Efectivo', sentido: detectarSentido(n,undefined,monto?monto.ini:undefined),
       persona: per?per.nombre:'', concepto: concepto||'', fecha: fch?fch.iso:detectarFecha(n,ahora), texto: orig};
   }
   let categoria;
@@ -625,7 +635,7 @@ function asegurarCfg(){
   if(!Array.isArray(S.cfg.abonos)) S.cfg.abonos=gruposIniciales();
   if(!S.cfg.conViveres){ if(!S.cfg.abonos.some(g=>norm(g.nombre)==='viveres')) S.cfg.abonos.push(gruposIniciales()[2]); S.cfg.conViveres=true; }
   if(!S.cfg.conCocaIndependiente){
-    if(!S.cfg.cuentas.some(c=>norm(c.nombre)==='coca cola'||norm(c.nombre)==='cocacola')) S.cfg.cuentas.push({nombre:'Coca-Cola', alias:['coca cola','cocacola','coca-cola']});
+    if(!S.cfg.cuentas.some(c=>['coca cola','cocacola','coca-cola'].includes(norm(c.nombre)))) S.cfg.cuentas.push({nombre:'Coca-Cola', alias:['coca cola','cocacola','coca-cola']});
     const gc=S.cfg.abonos.find(g=>norm(g.nombre)==='coca cola'||norm(g.nombre)==='cocacola'||norm(g.nombre)==='coca-cola');
     if(gc) gc.cuenta='Coca-Cola';
     S.cfg.conCocaIndependiente=true;
@@ -634,6 +644,12 @@ function asegurarCfg(){
     if(!S.cfg.cuentas.some(c=>norm(c.nombre)==='charcuteria'||norm(c.nombre)==='carniceria')) S.cfg.cuentas.push({nombre:'Charcutería', alias:['charcuteria','carniceria','la charcuteria','la carniceria']});
     S.cfg.conCharcuteria=true;
   }
+  if(!S.cfg.conRecordatorios){
+    if(!S.cfg.cuentas.some(c=>norm(c.nombre)==='recordatorios'||norm(c.nombre)==='encargos')) S.cfg.cuentas.push({nombre:'Recordatorios', alias:['recordatorio','recordatorios','encargo','encargos','mandado','mandados','favor','favores','notas']});
+    S.cfg.conRecordatorios=true;
+  }
+  // por si alguna vez una migración vieja dejó un negocio repetido (ej. "Coca-Cola" dos veces), se quita el duplicado
+  { const vistos=new Set(); S.cfg.cuentas=S.cfg.cuentas.filter(c=>{ const k=norm(c.nombre).replace(/-/g,' '); if(vistos.has(k)) return false; vistos.add(k); return true; }); }
   for(const g of S.cfg.abonos){ if(!Array.isArray(g.facturas)||!g.facturas.length) g.facturas=[nuevaFactura()]; if(!Array.isArray(g.alias)) g.alias=[norm(g.nombre)]; if(!g.cuenta||!S.cfg.cuentas.some(c=>c.nombre===g.cuenta)) g.cuenta=S.cfg.cuentas[0]?S.cfg.cuentas[0].nombre:'Personal'; }
   sincronizarCuentasAbono();
 }
@@ -865,7 +881,7 @@ function pintarInicio(){
       <div class="linea"><span>Salidas</span><span class="neg">${pesos(sCaja)}</span></div>
       <div class="linea"><span>Inversión</span><span class="neg">${pesos(inversion)}</span></div>
       <div class="linea total"><span>${g>=0?'Ganancia del negocio':'Pérdida'}</span><span class="${g>=0?'pos':'neg'}">${pesos(Math.abs(g))}</span></div>
-      ${retiro?`<div class="linea"><span>Ya retiró de esa ganancia</span><span class="neg">${pesos(retiro)}</span></div><div class="linea"><span>Le queda en el negocio</span><span class="pos">${pesos(g-retiro)}</span></div>`:''}
+      ${retiro?`<div class="linea"><span>Ya retiró de esa ganancia</span><span class="neg">${pesos(retiro)}</span></div><div class="linea"><span>Le queda en el negocio</span><span class="${(g-retiro)>=0?'pos':'neg'}">${pesos(g-retiro)}</span></div>${(g-retiro)<0?`<div class="linea total"><span>⚠️ Sacó más de lo que ganó</span><span class="neg">${pesos(retiro-g)}</span></div>`:''}`:''}
       ${abonosDet.length?`<div class="linea"><span>Abonos (ganancia acumulada)</span><span class="${abonoGanTotal>=0?'pos':'neg'}">${pesos(abonoGanTotal)}</span></div>`:''}
       <div class="oculto" id="det-${esc(c.nombre)}" style="margin-top:8px;border-top:1px dashed var(--borde);padding-top:8px">
         <div class="linea"><span>Ventas (este mes)</span><span class="pos">${pesos(venta)}</span></div>
@@ -878,6 +894,57 @@ function pintarInicio(){
   }).join('');
   const ult=ordenados().slice(0,6);
   $('ultimos').innerHTML= ult.length ? ult.map(m=>filaMov(m,true)).join('') : '<div class="vacio">Todavía no hay nada. Diga su primer movimiento arriba 👆</div>';
+}
+
+// Resumen general + avisos: junta en un solo lugar lo que le deben, los negocios en pérdida,
+// los retiros que superan la ganancia, y las facturas de Abonos que llevan rato quietas.
+function pintarPendientes(){
+  const hoy=new Date();
+  const d=new Date(); const ini=new Date(d.getFullYear(),d.getMonth(),1);
+  const delMes=S.movs.filter(m=>new Date(m.fecha)>=ini);
+  const perdidas=[], retirosExceso=[];
+  for(const c of S.cfg.cuentas){
+    const ms=delMes.filter(m=>m.cuenta===c.nombre);
+    const venta=ms.filter(m=>m.tipo==='entrada'&&m.categoria==='venta').reduce((s,m)=>s+m.monto,0);
+    const otraEnt=ms.filter(m=>m.tipo==='entrada'&&m.categoria!=='venta').reduce((s,m)=>s+m.monto,0);
+    const inversion=ms.filter(m=>m.tipo==='salida'&&m.categoria==='inversion').reduce((s,m)=>s+m.monto,0);
+    const gasto=ms.filter(m=>m.tipo==='salida'&&m.categoria==='gasto').reduce((s,m)=>s+m.monto,0);
+    const retiro=ms.filter(m=>m.tipo==='salida'&&m.categoria==='retiro').reduce((s,m)=>s+m.monto,0);
+    const g=(venta+otraEnt)-(inversion+gasto);
+    if(g<0) perdidas.push({cuenta:c.nombre, monto:-g});
+    if(retiro>0 && retiro>g) retirosExceso.push({cuenta:c.nombre, monto:retiro-g});
+  }
+  let leDebenTotal=0; const porCobrar=[]; const facturasViejas=[];
+  for(const g of S.cfg.abonos){
+    const r=resumenFactura(g,S.movs); const k=cuentasFactura(r);
+    if(r.f.valor && k.debe){ porCobrar.push({grupo:g.nombre, cuenta:g.cuenta, monto:k.debe}); leDebenTotal+=k.debe; }
+    else if(!r.f.valor && k.ganHoy!==null && k.ganHoy<0){ porCobrar.push({grupo:g.nombre, cuenta:g.cuenta, monto:-k.ganHoy}); leDebenTotal+=-k.ganHoy; }
+    const abiertaDias=Math.floor((hoy-new Date(r.f.desde))/86400000);
+    const ultimoMov=r.lista.length?new Date(r.lista[r.lista.length-1].fecha):new Date(r.f.desde);
+    const diasSinMov=Math.floor((hoy-ultimoMov)/86400000);
+    const sinCuadrar=(r.f.valor&&k.debe>0)||(k.ganHoy!==null&&k.ganHoy!==0);
+    if(abiertaDias>=20 && diasSinMov>=15 && sinCuadrar) facturasViejas.push({grupo:g.nombre, dias:diasSinMov});
+  }
+  if(!leDebenTotal && !perdidas.length && !retirosExceso.length && !facturasViejas.length){ $('zonaPendientes').innerHTML=''; return; }
+  let html=`<div class="card" style="border-left:4px solid var(--verde)"><h4 style="margin-top:0">📋 Resumen y pendientes</h4>`;
+  if(leDebenTotal>0){
+    html+=`<div class="linea total"><span>Le deben a usted (en total)</span><span class="pos">${pesos(leDebenTotal)}</span></div>`;
+    html+=porCobrar.map(x=>`<button class="chip" data-vergrupo="${esc(x.grupo)}" style="display:flex;justify-content:space-between;width:100%;text-align:left;margin:2px 0"><span>${esc(x.grupo)} <span class="tip">(${esc(x.cuenta)})</span></span><span class="pos">${pesos(x.monto)}</span></button>`).join('');
+  }
+  if(perdidas.length){
+    html+=`<div class="tip" style="margin-top:8px">⚠️ Negocios en pérdida este mes:</div>`;
+    html+=perdidas.map(x=>`<div class="linea"><span>${esc(x.cuenta)}</span><span class="neg">${pesos(x.monto)}</span></div>`).join('');
+  }
+  if(retirosExceso.length){
+    html+=`<div class="tip" style="margin-top:8px">⚠️ Retiró más de lo que ganó:</div>`;
+    html+=retirosExceso.map(x=>`<div class="linea"><span>${esc(x.cuenta)}</span><span class="neg">${pesos(x.monto)}</span></div>`).join('');
+  }
+  if(facturasViejas.length){
+    html+=`<div class="tip" style="margin-top:8px">🕓 Llevan rato quietas, revíselas:</div>`;
+    html+=facturasViejas.map(x=>`<button class="chip" data-vergrupo="${esc(x.grupo)}" style="display:flex;justify-content:space-between;width:100%;text-align:left;margin:2px 0"><span>${esc(x.grupo)}</span><span class="tip">${x.dias} días sin movimiento</span></button>`).join('');
+  }
+  html+='</div>';
+  $('zonaPendientes').innerHTML=html;
 }
 
 let fCuenta='Todas', fTipo='todos';
@@ -977,7 +1044,7 @@ function pintarAjustes(){
   $('optVoz').checked=!!S.cfg.voz;
 }
 
-function pintarTodo(){ pintarEstado(); pintarNube(); pintarInicio(); pintarMovs(); pintarAbonos(); pintarStats(); pintarPersonas(); pintarAjustes(); }
+function pintarTodo(){ pintarEstado(); pintarNube(); pintarInicio(); pintarPendientes(); pintarMovs(); pintarAbonos(); pintarStats(); pintarPersonas(); pintarAjustes(); }
 
 /* ---------- eventos ---------- */
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
@@ -991,8 +1058,9 @@ $('ejemplos').innerHTML=EJEMPLOS.map(t=>`<button>${esc(t)}</button>`).join('');
 $('ejemplos').onclick=e=>{ if(e.target.tagName==='BUTTON'){ $('frase').value=e.target.textContent; procesar(); } };
 $('buscar').oninput=pintarMovs;
 document.body.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-borrar],[data-fc],[data-ft],[data-sc],[data-per],[data-quitarc],[data-grupo],[data-copiarfact],[data-quitarg],[data-resumen]'); if(!t) return;
+  const t=e.target.closest('[data-borrar],[data-fc],[data-ft],[data-sc],[data-per],[data-quitarc],[data-grupo],[data-copiarfact],[data-quitarg],[data-resumen],[data-vergrupo]'); if(!t) return;
   if(t.dataset.resumen){ const det=$('det-'+t.dataset.resumen); if(det) det.classList.toggle('oculto'); return; }
+  if(t.dataset.vergrupo){ grupoSel=t.dataset.vergrupo; pintarAbonos(); document.querySelector('nav button[data-v="abonos"]').click(); return; }
   if(t.dataset.grupo){ grupoSel=t.dataset.grupo; pintarAbonos(); return; }
   if(t.dataset.copiarfact){ const [gn,fid]=t.dataset.copiarfact.split('|'); const g=S.cfg.abonos.find(x=>x.nombre===gn); const f=g&&g.facturas.find(x=>x.id===fid); if(!f) return;
     const txt=textoWhatsApp(g,f); try{ await navigator.clipboard.writeText(txt); aviso('Copiado ✓ Péguelo en WhatsApp'); }catch(err){ $('respaldoTxt').value=txt; aviso('No se pudo copiar automáticamente'); } return; }
